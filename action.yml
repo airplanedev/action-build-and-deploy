@@ -1,5 +1,5 @@
-name: "Airplane"
-description: "Build and upload task code to airplane.dev"
+name: "Airplane Build and Deploy"
+description: "Build and deploy task code to airplane.dev"
 author: "support@airplane.dev"
 branding:
   color: blue
