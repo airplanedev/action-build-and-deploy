@@ -1,0 +1,25 @@
+name: "Airplane"
+description: "Build and upload task code to airplane.dev"
+author: "support@airplane.dev"
+branding:
+  color: blue
+  icon: cloud-lightning
+inputs:
+  api-key:
+    required: true
+    description: "Your Airplane API Key. You can create one here: app.airplane.dev"
+  team-id:
+    required: true
+    description: Your Airplane Team ID.
+  tasks:
+    required: false
+    description: Override the task build-pack configuration.
+    default: "[]"
+  host:
+    required: false
+    description: Override the Airplane API host.
+    default: api.airplane.dev
+runs:
+  using: "node12"
+  main: dist/main/index.js
+  post: dist/post/index.js
