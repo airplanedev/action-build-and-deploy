@@ -24,11 +24,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
       - name: Upload Airplane Tasks
-        uses: ./
+        uses: airplanedev/action-build-and-deploy@main
         with:
           # TODO(you): get an API key the Airplane team, then store it as a GitHub Secret:
           # https://docs.github.com/en/actions/reference/encrypted-secrets#creating-encrypted-secrets-for-a-repository
           api-key: ${{ secrets.AIRPLANE_API_KEY }}
+          # TODO(you): reach out to the Airplane team to get your team's ID
+          team-id: abcdefghijk
           # TODO(you): configure your Airplane tasks. The examples below show each
           # of the supported environments. Reach out to the team if there's an
           # environment you'd like supported.
