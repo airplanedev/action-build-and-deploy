@@ -88,7 +88,7 @@ git fetch --tags
 git checkout v0.5.4
 # Alias it with the major version.
 git tag -f v0.5
-# --force for when the major tag already exists
+# Push to GitHub, --force for when the major tag already exists.
 git push origin v0.5 --force
 ```
 
