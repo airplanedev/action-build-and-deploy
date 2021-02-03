@@ -15267,7 +15267,7 @@ function buildTask(bp, imageTags) {
         const dockerfilePath = external_path_default().join(dir, "Dockerfile");
         const dockerfile = yield getDockerfile(bp);
         yield external_fs_.promises.writeFile(dockerfilePath, dockerfile);
-        core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: ${dockerfile}`);
+        core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: \n${dockerfile}`);
         const cacheDir = `/tmp/.buildx-cache/${object_hash_default()(bp)}`;
         yield external_fs_.promises.mkdir(cacheDir, {
             recursive: true,

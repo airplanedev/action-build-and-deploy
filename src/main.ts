@@ -122,7 +122,7 @@ async function buildTask(
   const dockerfilePath = path.join(dir, "Dockerfile");
   const dockerfile = await getDockerfile(bp);
   await fs.writeFile(dockerfilePath, dockerfile);
-  core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: ${dockerfile}`);
+  core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: \n${dockerfile}`);
 
   const cacheDir = `/tmp/.buildx-cache/${hash(bp)}`
   await fs.mkdir(cacheDir, {
