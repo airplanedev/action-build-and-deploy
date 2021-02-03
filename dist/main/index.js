@@ -15262,6 +15262,7 @@ function getTags() {
 }
 function buildTask(bp, imageTags) {
     return main_awaiter(this, void 0, void 0, function* () {
+        core.debug(`${JSON.stringify({ bp, imageTags }, null, 2)}`);
         // Generate a Dockerfile based on the build-pack:
         const dir = yield tmpDir(object_hash_default()(bp));
         const dockerfilePath = external_path_default().join(dir, "Dockerfile");

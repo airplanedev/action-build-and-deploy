@@ -114,6 +114,8 @@ async function buildTask(
   bp: BuildPack,
   imageTags: string[]
 ): Promise<void> {
+  core.debug(`${JSON.stringify({bp, imageTags}, null, 2)}`)
+
   // Generate a Dockerfile based on the build-pack:
   const dir = await tmpDir(hash(bp))
   const dockerfilePath = path.join(dir, "Dockerfile");
