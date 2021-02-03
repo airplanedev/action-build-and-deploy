@@ -56,7 +56,7 @@ async function main() {
       "us-central1-docker.pkg.dev",
     ],
     {
-      input: Buffer.from(resp.token),
+      input: resp.token,
     }
   );
 
@@ -71,7 +71,7 @@ async function main() {
   );
 
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-  console.log(`Published tasks: ${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`)}`)
+  console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`)}`)
   console.log(`These tasks can be run with your latest code using any of the following image tags: [${getTags()}]`)
 }
 
@@ -93,15 +93,13 @@ async function buildTask(
   bp: BuildPack,
   registry: string
 ): Promise<void> {
-  core.debug(`building taskID='${taskID}'`);
+  core.debug(`[${taskID}] building task...`);
 
   // Generate a Dockerfile based on the build-pack:
   const dockerfilePath = path.join(await tmpDir(taskID), "Dockerfile");
   const dockerfile = getDockerfile(bp);
   await fs.writeFile(dockerfilePath, dockerfile);
-  core.debug(
-    `Wrote Dockerfile for taskID=${taskID} to ${dockerfilePath}. Contents: ${dockerfile}`
-  );
+  core.debug(`[${taskID}] wrote Dockerfile to ${dockerfilePath}. Contents: ${dockerfile}`);
 
   const cacheDir = `/tmp/.buildx-cache/${taskID}`
   await fs.mkdir(cacheDir, {
@@ -124,7 +122,11 @@ async function buildTask(
     `type=local,dest=${cacheDir}`,
     "--push",
     ".",
-  ]);
+  ], {
+    prefix: taskID
+  });
+
+  core.debug(`[${taskID}] finished`);
 
   return;
 }

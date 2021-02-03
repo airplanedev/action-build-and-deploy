@@ -1545,6 +1545,28 @@ function copyFile(srcFile, destFile, force) {
 
 /***/ }),
 
+/***/ 416:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+var __webpack_unused_export__;
+
+/// <reference types="node" />
+__webpack_unused_export__ = ({ value: true });
+const stream_1 = __webpack_require__(413);
+class NullWritable extends stream_1.Writable {
+    _write(_chunk, _encoding, callback) {
+        callback();
+    }
+    _writev(_chunks, callback) {
+        callback();
+    }
+}
+exports.U3 = NullWritable;
+__webpack_unused_export__ = NullWritable;
+//# sourceMappingURL=null-writable.js.map
+
+/***/ }),
+
 /***/ 254:
 /***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
 
@@ -1555,6 +1577,8 @@ __webpack_require__.r(__webpack_exports__);
 var core = __webpack_require__(186);
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
 var exec = __webpack_require__(514);
+// EXTERNAL MODULE: ./node_modules/null-writable/lib/null-writable.js
+var null_writable = __webpack_require__(416);
 // CONCATENATED MODULE: ./src/exec.ts
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -1573,18 +1597,34 @@ const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, funct
     }
     let stdout = "";
     let stderr = "";
-    const returnCode = yield exec.exec(cmd[0], cmd.slice(1), Object.assign({ listeners: {
+    const returnCode = yield exec.exec(cmd[0], cmd.slice(1), {
+        input: options.input ? Buffer.from(options.input) : undefined,
+        // We manage stdout/stderr ourselves via listeners:
+        outStream: new null_writable/* NullWritable */.U3(),
+        errStream: new null_writable/* NullWritable */.U3(),
+        listeners: {
             stdout: (data) => {
                 const s = data.toString();
                 stdout += s;
-                core.debug(s);
+                if (options.prefix !== undefined) {
+                    console.log(`[${options.prefix}] ${s}`);
+                }
+                else {
+                    console.log(s);
+                }
             },
             stderr: (data) => {
                 const s = data.toString();
                 stderr += s;
-                core.debug(s);
+                if (options.prefix !== undefined) {
+                    console.error(`[${options.prefix}] ${s}`);
+                }
+                else {
+                    console.error(s);
+                }
             },
-        } }, options));
+        },
+    });
     return {
         returnCode,
         stdout: stdout.trim(),
@@ -1711,6 +1751,13 @@ module.exports = require("os");;
 /***/ ((module) => {
 
 module.exports = require("path");;
+
+/***/ }),
+
+/***/ 413:
+/***/ ((module) => {
+
+module.exports = require("stream");;
 
 /***/ }),
 

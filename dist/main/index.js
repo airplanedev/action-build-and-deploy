@@ -13729,6 +13729,29 @@ module.exports.default = normalizeUrl;
 
 /***/ }),
 
+/***/ 416:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+var __webpack_unused_export__;
+
+/// <reference types="node" />
+__webpack_unused_export__ = ({ value: true });
+const stream_1 = __webpack_require__(2413);
+class NullWritable extends stream_1.Writable {
+    _write(_chunk, _encoding, callback) {
+        callback();
+    }
+    _writev(_chunks, callback) {
+        callback();
+    }
+}
+exports.U3 = NullWritable;
+__webpack_unused_export__ = NullWritable;
+//# sourceMappingURL=null-writable.js.map
+
+/***/ }),
+
 /***/ 1223:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
@@ -14542,6 +14565,8 @@ var source_default = /*#__PURE__*/__webpack_require__.n(source);
 
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
 var exec = __webpack_require__(1514);
+// EXTERNAL MODULE: ./node_modules/null-writable/lib/null-writable.js
+var null_writable = __webpack_require__(416);
 // CONCATENATED MODULE: ./src/exec.ts
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -14560,18 +14585,34 @@ const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, funct
     }
     let stdout = "";
     let stderr = "";
-    const returnCode = yield exec.exec(cmd[0], cmd.slice(1), Object.assign({ listeners: {
+    const returnCode = yield exec.exec(cmd[0], cmd.slice(1), {
+        input: options.input ? Buffer.from(options.input) : undefined,
+        // We manage stdout/stderr ourselves via listeners:
+        outStream: new null_writable/* NullWritable */.U3(),
+        errStream: new null_writable/* NullWritable */.U3(),
+        listeners: {
             stdout: (data) => {
                 const s = data.toString();
                 stdout += s;
-                core.debug(s);
+                if (options.prefix !== undefined) {
+                    console.log(`[${options.prefix}] ${s}`);
+                }
+                else {
+                    console.log(s);
+                }
             },
             stderr: (data) => {
                 const s = data.toString();
                 stderr += s;
-                core.debug(s);
+                if (options.prefix !== undefined) {
+                    console.error(`[${options.prefix}] ${s}`);
+                }
+                else {
+                    console.error(s);
+                }
             },
-        } }, options));
+        },
+    });
     return {
         returnCode,
         stdout: stdout.trim(),
@@ -14623,10 +14664,21 @@ function tmpDir(subdir) {
 }
 
 // CONCATENATED MODULE: ./src/buildpack.ts
+var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
 function getDockerfile(bp) {
-    let contents = "";
-    if (bp.environment === "go") {
-        contents = `
+    return buildpack_awaiter(this, void 0, void 0, function* () {
+        let contents = "";
+        if (bp.environment === "go") {
+            contents = `
       FROM golang:1.15.7-alpine3.13 as builder
 
       WORKDIR /airplane
@@ -14644,9 +14696,9 @@ function getDockerfile(bp) {
 
       ENTRYPOINT ["/bin/main"]
     `;
-    }
-    else if (bp.environment === "deno") {
-        contents = `
+        }
+        else if (bp.environment === "deno") {
+            contents = `
       FROM hayd/alpine-deno:1.7.1
 
       WORKDIR /airplane
@@ -14657,11 +14709,17 @@ function getDockerfile(bp) {
       USER deno
       ENTRYPOINT ["deno", "run", "${bp.entrypoint}"]
     `;
-    }
-    return contents
-        .split("\n")
-        .map((line) => line.trim())
-        .join("\n");
+        }
+        else if (bp.environment === "docker") {
+            return yield external_fs_.promises.readFile(bp.dockerfile, {
+                encoding: 'utf-8',
+            });
+        }
+        return contents
+            .split("\n")
+            .map((line) => line.trim())
+            .join("\n");
+    });
 }
 
 // CONCATENATED MODULE: ./src/main.ts
@@ -14722,7 +14780,7 @@ function main() {
             "--password-stdin",
             "us-central1-docker.pkg.dev",
         ], {
-            input: Buffer.from(resp.token),
+            input: resp.token,
         });
         // Create a temporary directory for building all images in.
         yield tmpDir();
@@ -14732,32 +14790,38 @@ function main() {
         // TODO: use a prefix-logger for these parallel builds
         tasks.map((task) => buildTask(task.taskID, task.buildPack, resp.repo)));
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-        console.log(`Published tasks: ${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}\n`)}`);
+        console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`)}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${getTags()}]`);
     });
 }
 function getTags() {
-    const shortSHA = github.context.sha.substr(0, 7);
-    const branch = sanitizeDockerTag(github.context.ref.replace(/^refs\/heads\//, ""));
-    return [shortSHA, branch];
+    return main_awaiter(this, void 0, void 0, function* () {
+        // Fetch the shortest unique SHA (of length at least 7):
+        const { stdout: shortSHA } = yield exec_exec([
+            "git", "rev-parse", "--short=7", github.context.sha
+        ]);
+        const branch = sanitizeDockerTag(github.context.ref.replace(/^refs\/heads\//, ""));
+        return [shortSHA, branch];
+    });
 }
 function buildTask(taskID, bp, registry) {
     return main_awaiter(this, void 0, void 0, function* () {
-        core.debug(`building taskID='${taskID}'`);
+        core.debug(`[${taskID}] building task...`);
         // Generate a Dockerfile based on the build-pack:
         const dockerfilePath = external_path_default().join(yield tmpDir(taskID), "Dockerfile");
         const dockerfile = getDockerfile(bp);
         yield external_fs_.promises.writeFile(dockerfilePath, dockerfile);
-        core.debug(`Wrote Dockerfile for taskID=${taskID} to ${dockerfilePath}. Contents: ${dockerfile}`);
+        core.debug(`[${taskID}] wrote Dockerfile to ${dockerfilePath}. Contents: ${dockerfile}`);
         const cacheDir = `/tmp/.buildx-cache/${taskID}`;
         yield external_fs_.promises.mkdir(cacheDir, {
             recursive: true,
         });
+        const tags = yield getTags();
         yield exec_exec([
             "docker",
             "buildx",
             "build",
-            ...getTags()
+            ...tags
                 .map((tag) => ["--tag", `${registry}/${toImageName(taskID)}:${tag}`])
                 .flat(1),
             "--file",
@@ -14768,7 +14832,10 @@ function buildTask(taskID, bp, registry) {
             `type=local,dest=${cacheDir}`,
             "--push",
             ".",
-        ]);
+        ], {
+            prefix: taskID
+        });
+        core.debug(`[${taskID}] finished`);
         return;
     });
 }

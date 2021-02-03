@@ -18,7 +18,8 @@
     "@actions/core": "^1.2.6",
     "@actions/exec": "^1.0.4",
     "@actions/github": "^4.0.0",
-    "got": "^11.8.1"
+    "got": "^11.8.1",
+    "null-writable": "^1.0.5"
   },
   "devDependencies": {
     "@types/node": "^12",
