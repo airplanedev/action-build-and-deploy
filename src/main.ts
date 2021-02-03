@@ -83,12 +83,13 @@ async function main() {
 
   // Build and publish each image:
   console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
-  const builders = Object.values(builds).map(({bp, imageTags}) => buildTask(bp, imageTags))
   if (parallel) {
-    await Promise.all(builders);
+    await Promise.all(
+      Object.values(builds).map(build => buildTask(build.bp, build.imageTags))
+    );
   } else {
-    for (const builder of builders) {
-      await builder
+    for (const build of Object.values(builds)) {
+      await buildTask(build.bp, build.imageTags)
     }
   }
 

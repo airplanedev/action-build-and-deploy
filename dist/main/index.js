@@ -15236,13 +15236,12 @@ function main() {
         }
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
-        const builders = Object.values(builds).map(({ bp, imageTags }) => buildTask(bp, imageTags));
         if (parallel) {
-            yield Promise.all(builders);
+            yield Promise.all(Object.values(builds).map(build => buildTask(build.bp, build.imageTags)));
         }
         else {
-            for (const builder of builders) {
-                yield builder;
+            for (const build of Object.values(builds)) {
+                yield buildTask(build.bp, build.imageTags);
             }
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
