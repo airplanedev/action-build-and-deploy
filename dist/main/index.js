@@ -15192,6 +15192,7 @@ function main() {
         // TODO: remove this dependency on the team id
         const teamID = core.getInput("team-id");
         const host = core.getInput("host");
+        const parallel = core.getInput("parallel") === "true";
         // Hardcode the tasks and build-packs for now. For now, we want to show
         // this e2e with our internal scripts.
         //
@@ -15235,9 +15236,15 @@ function main() {
         }
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
-        yield Promise.all(
-        // TODO: use a prefix-logger for these parallel builds
-        Object.values(builds).map(({ bp, imageTags }) => buildTask(bp, imageTags)));
+        const builders = Object.values(builds).map(({ bp, imageTags }) => buildTask(bp, imageTags));
+        if (parallel) {
+            yield Promise.all(builders);
+        }
+        else {
+            for (const builder of builders) {
+                yield builder;
+            }
+        }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
         console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`)}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
