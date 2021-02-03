@@ -6,7 +6,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { tmpDir } from "./tmp";
 import { BuildPack, getDockerfile } from "./buildpack";
-import { hash } from 'object-hash'
+import hash from 'object-hash'
 
 async function run(): Promise<void> {
   try {
