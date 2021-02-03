@@ -19,7 +19,6 @@
     "@actions/exec": "^1.0.4",
     "@actions/github": "^4.0.0",
     "got": "^11.8.1",
-    "null-writable": "^1.0.5",
     "object-hash": "^2.1.1"
   },
   "devDependencies": {

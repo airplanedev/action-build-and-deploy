@@ -1574,27 +1574,12 @@ const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, funct
     let stderr = "";
     const returnCode = yield exec.exec(cmd[0], cmd.slice(1), {
         input: options.input ? Buffer.from(options.input) : undefined,
-        silent: true,
         listeners: {
             stdout: (data) => {
-                const s = data.toString();
-                stdout += s;
-                if (options.prefix !== undefined) {
-                    console.log(`${options.prefix} ${s}`);
-                }
-                else {
-                    console.log(s);
-                }
+                stdout += data.toString();
             },
             stderr: (data) => {
-                const s = data.toString();
-                stderr += s;
-                if (options.prefix !== undefined) {
-                    console.error(`${options.prefix} ${s}`);
-                }
-                else {
-                    console.error(s);
-                }
+                stderr += data.toString();
             },
         },
     });

@@ -1,9 +1,6 @@
 import * as aexec from "@actions/exec";
-import * as core from "@actions/core";
-
 
 export type ExecOptions = {
-  prefix?: string
   input?: string
 }
 
@@ -23,25 +20,12 @@ export const exec = async (
   let stderr = "";
   const returnCode = await aexec.exec(cmd[0], cmd.slice(1), {
     input: options.input ? Buffer.from(options.input) : undefined,
-    silent: true,
     listeners: {
       stdout: (data: Buffer) => {
-        const s = data.toString();
-        stdout += s
-        if (options.prefix !== undefined) {
-          console.log(`${options.prefix} ${s}`)
-        } else {
-          console.log(s)
-        }
+        stdout += data.toString();
       },
       stderr: (data: Buffer) => {
-        const s = data.toString();
-        stderr += s
-        if (options.prefix !== undefined) {
-          console.error(`${options.prefix} ${s}`)
-        } else {
-          console.error(s)
-        }
+        stderr += data.toString();
       },
     },
   });

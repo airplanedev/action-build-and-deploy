@@ -575,11 +575,6 @@ npm-run-all@^4.1.5:
     shell-quote "^1.6.1"
     string.prototype.padend "^3.0.0"
 
-null-writable@^1.0.5:
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/null-writable/-/null-writable-1.0.5.tgz#0c619bf6a63f59c4f78b2b6d3acb00843a03710d"
-  integrity sha512-eLk4j1viNDfDCceYNSxUsfbIhnNTOTADss5Hc9f/zxhooegSlyWfyAzdQHsliniIF8j42+S0iroenyxRyA2pBA==
-
 object-hash@^2.1.1:
   version "2.1.1"
   resolved "https://registry.yarnpkg.com/object-hash/-/object-hash-2.1.1.tgz#9447d0279b4fcf80cff3259bf66a1dc73afabe09"
