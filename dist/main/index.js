@@ -15245,7 +15245,7 @@ function main() {
             }
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-        console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`)}`);
+        console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
