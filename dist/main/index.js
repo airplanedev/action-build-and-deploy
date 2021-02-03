@@ -14756,6 +14756,8 @@ function main() {
         });
         // Create a temporary directory for building all images in.
         yield tmpDir();
+        const tags = yield getTags();
+        const builds = {};
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
         yield Promise.all(
@@ -14763,7 +14765,7 @@ function main() {
         tasks.map((task) => buildTask(task.taskID, task.buildPack, resp.repo)));
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
         console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`)}`);
-        console.log(`These tasks can be run with your latest code using any of the following image tags: [${getTags()}]`);
+        console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
 function getTags() {
