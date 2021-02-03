@@ -97,7 +97,7 @@ async function buildTask(
 
   // Generate a Dockerfile based on the build-pack:
   const dockerfilePath = path.join(await tmpDir(taskID), "Dockerfile");
-  const dockerfile = getDockerfile(bp);
+  const dockerfile = await getDockerfile(bp);
   await fs.writeFile(dockerfilePath, dockerfile);
   core.debug(`[${taskID}] wrote Dockerfile to ${dockerfilePath}. Contents: ${dockerfile}`);
 
@@ -122,9 +122,7 @@ async function buildTask(
     `type=local,dest=${cacheDir}`,
     "--push",
     ".",
-  ], {
-    prefix: taskID
-  });
+  ]);
 
   core.debug(`[${taskID}] finished`);
 

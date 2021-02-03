@@ -13729,29 +13729,6 @@ module.exports.default = normalizeUrl;
 
 /***/ }),
 
-/***/ 416:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-var __webpack_unused_export__;
-
-/// <reference types="node" />
-__webpack_unused_export__ = ({ value: true });
-const stream_1 = __webpack_require__(2413);
-class NullWritable extends stream_1.Writable {
-    _write(_chunk, _encoding, callback) {
-        callback();
-    }
-    _writev(_chunks, callback) {
-        callback();
-    }
-}
-exports.U3 = NullWritable;
-__webpack_unused_export__ = NullWritable;
-//# sourceMappingURL=null-writable.js.map
-
-/***/ }),
-
 /***/ 1223:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
@@ -14565,8 +14542,6 @@ var source_default = /*#__PURE__*/__webpack_require__.n(source);
 
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
 var exec = __webpack_require__(1514);
-// EXTERNAL MODULE: ./node_modules/null-writable/lib/null-writable.js
-var null_writable = __webpack_require__(416);
 // CONCATENATED MODULE: ./src/exec.ts
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -14578,7 +14553,6 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
     });
 };
 
-
 const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, function* () {
     if (cmd.length === 0) {
         throw new Error("A command is required");
@@ -14587,15 +14561,13 @@ const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, funct
     let stderr = "";
     const returnCode = yield exec.exec(cmd[0], cmd.slice(1), {
         input: options.input ? Buffer.from(options.input) : undefined,
-        // We manage stdout/stderr ourselves via listeners:
-        outStream: new null_writable/* NullWritable */.U3(),
-        errStream: new null_writable/* NullWritable */.U3(),
+        silent: true,
         listeners: {
             stdout: (data) => {
                 const s = data.toString();
                 stdout += s;
                 if (options.prefix !== undefined) {
-                    console.log(`[${options.prefix}] ${s}`);
+                    console.log(`${options.prefix} ${s}`);
                 }
                 else {
                     console.log(s);
@@ -14605,7 +14577,7 @@ const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, funct
                 const s = data.toString();
                 stderr += s;
                 if (options.prefix !== undefined) {
-                    console.error(`[${options.prefix}] ${s}`);
+                    console.error(`${options.prefix} ${s}`);
                 }
                 else {
                     console.error(s);
@@ -14809,7 +14781,7 @@ function buildTask(taskID, bp, registry) {
         core.debug(`[${taskID}] building task...`);
         // Generate a Dockerfile based on the build-pack:
         const dockerfilePath = external_path_default().join(yield tmpDir(taskID), "Dockerfile");
-        const dockerfile = getDockerfile(bp);
+        const dockerfile = yield getDockerfile(bp);
         yield external_fs_.promises.writeFile(dockerfilePath, dockerfile);
         core.debug(`[${taskID}] wrote Dockerfile to ${dockerfilePath}. Contents: ${dockerfile}`);
         const cacheDir = `/tmp/.buildx-cache/${taskID}`;
@@ -14832,9 +14804,7 @@ function buildTask(taskID, bp, registry) {
             `type=local,dest=${cacheDir}`,
             "--push",
             ".",
-        ], {
-            prefix: taskID
-        });
+        ]);
         core.debug(`[${taskID}] finished`);
         return;
     });
