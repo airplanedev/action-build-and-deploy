@@ -1,6 +1,8 @@
 import * as aexec from "@actions/exec";
-import { ExecOptions } from "@actions/exec";
-import * as core from "@actions/core";
+
+export type ExecOptions = {
+  input?: string
+}
 
 export const exec = async (
   cmd: string[],
@@ -17,19 +19,15 @@ export const exec = async (
   let stdout = "";
   let stderr = "";
   const returnCode = await aexec.exec(cmd[0], cmd.slice(1), {
+    input: options.input ? Buffer.from(options.input) : undefined,
     listeners: {
       stdout: (data: Buffer) => {
-        const s = data.toString();
-        stdout += s;
-        core.debug(s);
+        stdout += data.toString();
       },
       stderr: (data: Buffer) => {
-        const s = data.toString();
-        stderr += s;
-        core.debug(s);
+        stderr += data.toString();
       },
     },
-    ...options,
   });
 
   return {

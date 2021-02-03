@@ -6,6 +6,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { tmpDir } from "./tmp";
 import { BuildPack, getDockerfile } from "./buildpack";
+import hash from 'object-hash'
 
 async function run(): Promise<void> {
   try {
@@ -15,19 +16,22 @@ async function run(): Promise<void> {
   }
 }
 
+type Task = {
+  taskID: string;
+  buildPack: BuildPack;
+}
+
 async function main() {
   const apiKey: string = core.getInput("api-key");
   // TODO: remove this dependency on the team id
   const teamID: string = core.getInput("team-id");
   const host: string = core.getInput("host");
+  const parallel = core.getInput("parallel") === "true";
   // Hardcode the tasks and build-packs for now. For now, we want to show
   // this e2e with our internal scripts.
   //
   // TODO: pull this build-pack data from the API.
-  const tasks: Array<{
-    taskID: string;
-    buildPack: BuildPack;
-  }> = JSON.parse(core.getInput("tasks"));
+  const tasks: Task[] = JSON.parse(core.getInput("tasks"));
 
   // Get an Airplane Registry token:
   const resp = await got
@@ -56,23 +60,42 @@ async function main() {
       "us-central1-docker.pkg.dev",
     ],
     {
-      input: Buffer.from(resp.token),
+      input: resp.token,
     }
   );
 
   // Create a temporary directory for building all images in.
   await tmpDir();
 
+  const tags = await getTags()
+  // Group together tasks by build pack, so that we build the minimum number of images.
+  const builds: Record<string, { bp: BuildPack, imageTags: string[] }> = {}
+  for (const task of tasks) {
+    const key = hash(task.buildPack)
+    builds[key] = {
+      bp: task.buildPack,
+      imageTags: [
+        ...(builds[key]?.imageTags || []),
+        ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
+      ],
+    }
+  }
+
   // Build and publish each image:
   console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
-  await Promise.all(
-    // TODO: use a prefix-logger for these parallel builds
-    tasks.map((task) => buildTask(task.taskID, task.buildPack, resp.repo))
-  );
+  if (parallel) {
+    await Promise.all(
+      Object.values(builds).map(build => buildTask(build.bp, build.imageTags))
+    );
+  } else {
+    for (const build of Object.values(builds)) {
+      await buildTask(build.bp, build.imageTags)
+    }
+  }
 
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-  console.log(`Published tasks: ${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`)}`)
-  console.log(`These tasks can be run with your latest code using any of the following image tags: [${getTags()}]`)
+  console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`)
+  console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`)
 }
 
 async function getTags() {
@@ -89,21 +112,19 @@ async function getTags() {
 }
 
 async function buildTask(
-  taskID: string,
   bp: BuildPack,
-  registry: string
+  imageTags: string[]
 ): Promise<void> {
-  core.debug(`building taskID='${taskID}'`);
+  core.debug(`${JSON.stringify({bp, imageTags}, null, 2)}`)
 
   // Generate a Dockerfile based on the build-pack:
-  const dockerfilePath = path.join(await tmpDir(taskID), "Dockerfile");
-  const dockerfile = getDockerfile(bp);
+  const dir = await tmpDir(hash(bp))
+  const dockerfilePath = path.join(dir, "Dockerfile");
+  const dockerfile = await getDockerfile(bp);
   await fs.writeFile(dockerfilePath, dockerfile);
-  core.debug(
-    `Wrote Dockerfile for taskID=${taskID} to ${dockerfilePath}. Contents: ${dockerfile}`
-  );
+  core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: \n${dockerfile}`);
 
-  const cacheDir = `/tmp/.buildx-cache/${taskID}`
+  const cacheDir = `/tmp/.buildx-cache/${hash(bp)}`
   await fs.mkdir(cacheDir, {
     recursive: true,
   });
@@ -113,9 +134,7 @@ async function buildTask(
     "docker",
     "buildx",
     "build",
-    ...tags
-      .map((tag) => ["--tag", `${registry}/${toImageName(taskID)}:${tag}`])
-      .flat(1),
+    ...imageTags.map((tag) => ["--tag", tag]).flat(1),
     "--file",
     dockerfilePath,
     "--cache-from",

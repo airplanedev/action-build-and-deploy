@@ -1566,25 +1566,23 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
     });
 };
 
-
 const exec_exec = (cmd, options = {}) => __awaiter(void 0, void 0, void 0, function* () {
     if (cmd.length === 0) {
         throw new Error("A command is required");
     }
     let stdout = "";
     let stderr = "";
-    const returnCode = yield exec.exec(cmd[0], cmd.slice(1), Object.assign({ listeners: {
+    const returnCode = yield exec.exec(cmd[0], cmd.slice(1), {
+        input: options.input ? Buffer.from(options.input) : undefined,
+        listeners: {
             stdout: (data) => {
-                const s = data.toString();
-                stdout += s;
-                core.debug(s);
+                stdout += data.toString();
             },
             stderr: (data) => {
-                const s = data.toString();
-                stderr += s;
-                core.debug(s);
+                stderr += data.toString();
             },
-        } }, options));
+        },
+    });
     return {
         returnCode,
         stdout: stdout.trim(),
