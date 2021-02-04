@@ -113,6 +113,7 @@ type Task = Builder & {
 async function getTasks(host: string, apiKey: string, teamID: string): Promise<Task[]> {
   // For backwards compatibility, accept a hardcoded list of tasks, if provided.
   const tasksInput = core.getInput("tasks")
+  core.debug(`tasksInput: ${tasksInput}`)
   if (!tasksInput) {
     // Translate the old format for buildpacks into the corresponding builders.
     const tasks = JSON.parse(tasksInput) as Array<{
@@ -132,6 +133,7 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
           };
     }>
 
+    core.debug(`tasks: ${tasks}`)
     if (tasks.length > 0) {
       return tasks.map((t): Task => {
         if (t.buildPack.environment === "go") {
@@ -176,8 +178,9 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
         repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`
       }
     })
-  console.log(req.url)
-  console.log(req.body)
+    core.debug(`req: ${req}`)
+    core.debug(`req: ${req.url}`)
+    core.debug(`req: ${req.body}`)
   // const resp = await req.json<{
   //     tasks: Task[]
   //   }>();
