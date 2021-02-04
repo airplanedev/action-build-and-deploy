@@ -163,7 +163,7 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
   }
 
   // Otherwise, fetch the task list from the API.
-  const resp = await got
+  const req = await got
     .get(`https://${host}/api/tasks`, {
       headers: {
         "X-Token": apiKey,
@@ -172,11 +172,14 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
       searchParams: {
         repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`
       }
-    }).json<{
-      tasks: Task[]
-    }>();
-  
-  return resp.tasks
+    })
+  console.log(req.url)
+  console.log(req.body)
+  // const resp = await req.json<{
+  //     tasks: Task[]
+  //   }>();
+  return []
+  // return resp.tasks
 }
 
 async function buildTask(
