@@ -113,56 +113,55 @@ type Task = Builder & {
 async function getTasks(host: string, apiKey: string, teamID: string): Promise<Task[]> {
   // For backwards compatibility, accept a hardcoded list of tasks, if provided.
   const tasksInput = core.getInput("tasks")
-  if (!tasksInput) {
-    // Translate the old format for buildpacks into the corresponding builders.
-    const tasks = JSON.parse(tasksInput) as Array<{
-      taskID: string
-      buildPack:
-        | {
-            environment: "go";
-            entrypoint: string;
-          }
-        | {
-            environment: "deno";
-            entrypoint: string;
-          }
-        | {
-            environment: "docker";
-            dockerfile: string;
-          };
-    }>
 
-    if (tasks.length > 0) {
-      return tasks.map((t): Task => {
-        if (t.buildPack.environment === "go") {
-          return {
-            taskID: t.taskID,
-            builder: t.buildPack.environment,
-            builderConfig: {
-              entrypoint: t.buildPack.entrypoint,
-            },
-          }
-        } else if (t.buildPack.environment === "deno") {
-          return {
-            taskID: t.taskID,
-            builder: t.buildPack.environment,
-            builderConfig: {
-              entrypoint: t.buildPack.entrypoint,
-            },
-          }
-        } else if (t.buildPack.environment === "docker") {
-          return {
-            taskID: t.taskID,
-            builder: t.buildPack.environment,
-            builderConfig: {
-              dockerfile: t.buildPack.dockerfile,
-            },
-          }
-        } else {
-          throw new Error("Unknown environment for taskID=" + t.taskID)
+  // Translate the old format for buildpacks into the corresponding builders.
+  const tasks = JSON.parse(tasksInput) as Array<{
+    taskID: string
+    buildPack:
+      | {
+          environment: "go";
+          entrypoint: string;
         }
-      })
-    }
+      | {
+          environment: "deno";
+          entrypoint: string;
+        }
+      | {
+          environment: "docker";
+          dockerfile: string;
+        };
+  }>
+
+  if (tasks.length > 0) {
+    return tasks.map((t): Task => {
+      if (t.buildPack.environment === "go") {
+        return {
+          taskID: t.taskID,
+          builder: t.buildPack.environment,
+          builderConfig: {
+            entrypoint: t.buildPack.entrypoint,
+          },
+        }
+      } else if (t.buildPack.environment === "deno") {
+        return {
+          taskID: t.taskID,
+          builder: t.buildPack.environment,
+          builderConfig: {
+            entrypoint: t.buildPack.entrypoint,
+          },
+        }
+      } else if (t.buildPack.environment === "docker") {
+        return {
+          taskID: t.taskID,
+          builder: t.buildPack.environment,
+          builderConfig: {
+            dockerfile: t.buildPack.dockerfile,
+          },
+        }
+      } else {
+        throw new Error("Unknown environment for taskID=" + t.taskID)
+      }
+    })
   }
 
   // Otherwise, fetch the task list from the API.
