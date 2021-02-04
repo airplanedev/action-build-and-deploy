@@ -22,7 +22,9 @@ async function main() {
   const teamID: string = core.getInput("team-id");
   const host: string = core.getInput("host");
   const parallel = core.getInput("parallel") === "true";
+  core.debug('pre:getTasks')
   const tasks = await getTasks(host, apiKey, teamID);
+  core.debug('post:getTasks')
 
   // Get an Airplane Registry token:
   const resp = await got
@@ -112,6 +114,7 @@ type Task = Builder & {
 
 async function getTasks(host: string, apiKey: string, teamID: string): Promise<Task[]> {
   // For backwards compatibility, accept a hardcoded list of tasks, if provided.
+  core.debug('getTasks')
   const tasksInput = core.getInput("tasks")
   core.debug(`tasksInput: ${tasksInput}`)
   if (!tasksInput) {
