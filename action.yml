@@ -14,6 +14,7 @@ inputs:
   tasks:
     required: false
     description: Override the task build-pack configuration.
+    default: "[]"
   parallel:
     required: false
     description: Whether or not to build Docker images in parallel

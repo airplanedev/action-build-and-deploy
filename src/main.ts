@@ -114,6 +114,7 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
   // For backwards compatibility, accept a hardcoded list of tasks, if provided.
   const tasksInput = core.getInput("tasks")
   if (!tasksInput) {
+    // Translate the old format for buildpacks into the corresponding builders.
     const tasks = JSON.parse(tasksInput) as Array<{
       taskID: string
       buildPack:
@@ -131,7 +132,8 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
           };
     }>
 
-    return tasks.map((t): Task => {
+    if (tasks.length > 0) {
+      return tasks.map((t): Task => {
         if (t.buildPack.environment === "go") {
           return {
             id: t.taskID,
@@ -159,7 +161,8 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
         } else {
           throw new Error("Unknown environment for taskID=" + t.taskID)
         }
-    })
+      })
+    }
   }
 
   // Otherwise, fetch the task list from the API.
