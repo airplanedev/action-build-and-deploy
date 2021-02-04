@@ -5,7 +5,7 @@ import { exec } from "./exec";
 import { promises as fs } from "fs";
 import path from "path";
 import { tmpDir } from "./tmp";
-import { BuildPack, getDockerfile } from "./buildpack";
+import { getDockerfile, Builder } from './buildpack';
 import hash from 'object-hash'
 
 async function run(): Promise<void> {
@@ -16,22 +16,13 @@ async function run(): Promise<void> {
   }
 }
 
-type Task = {
-  taskID: string;
-  buildPack: BuildPack;
-}
-
 async function main() {
   const apiKey: string = core.getInput("api-key");
   // TODO: remove this dependency on the team id
   const teamID: string = core.getInput("team-id");
   const host: string = core.getInput("host");
   const parallel = core.getInput("parallel") === "true";
-  // Hardcode the tasks and build-packs for now. For now, we want to show
-  // this e2e with our internal scripts.
-  //
-  // TODO: pull this build-pack data from the API.
-  const tasks: Task[] = JSON.parse(core.getInput("tasks"));
+  const tasks = await getTasks(host, apiKey, teamID);
 
   // Get an Airplane Registry token:
   const resp = await got
@@ -69,14 +60,18 @@ async function main() {
 
   const tags = await getTags()
   // Group together tasks by build pack, so that we build the minimum number of images.
-  const builds: Record<string, { bp: BuildPack, imageTags: string[] }> = {}
+  const builds: Record<string, { b: Builder, imageTags: string[] }> = {}
   for (const task of tasks) {
-    const key = hash(task.buildPack)
+    const b = {
+      builder: task.builder,
+      builderConfig: task.builderConfig,
+    } as Builder
+    const key = hash(b)
     builds[key] = {
-      bp: task.buildPack,
+      b,
       imageTags: [
         ...(builds[key]?.imageTags || []),
-        ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
+        ...tags.map((tag) => `${resp.repo}/${toImageName(task.id)}:${tag}`),
       ],
     }
   }
@@ -85,16 +80,16 @@ async function main() {
   console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
   if (parallel) {
     await Promise.all(
-      Object.values(builds).map(build => buildTask(build.bp, build.imageTags))
+      Object.values(builds).map(build => buildTask(build.b, build.imageTags))
     );
   } else {
     for (const build of Object.values(builds)) {
-      await buildTask(build.bp, build.imageTags)
+      await buildTask(build.b, build.imageTags)
     }
   }
 
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-  console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`)
+  console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.id}`).join("\n")}`)
   console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`)
 }
 
@@ -111,20 +106,93 @@ async function getTags() {
   return [shortSHA, branch];
 }
 
+type Task = Builder & {
+  id: string
+}
+
+async function getTasks(host: string, apiKey: string, teamID: string): Promise<Task[]> {
+  // For backwards compatibility, accept a hardcoded list of tasks, if provided.
+  const tasksInput = core.getInput("tasks")
+  if (tasksInput !== "") {
+    const tasks = JSON.parse(tasksInput) as Array<{
+      taskID: string
+      buildPack:
+        | {
+            environment: "go";
+            entrypoint: string;
+          }
+        | {
+            environment: "deno";
+            entrypoint: string;
+          }
+        | {
+            environment: "docker";
+            dockerfile: string;
+          };
+    }>
+
+    return tasks.map((t): Task => {
+        if (t.buildPack.environment === "go") {
+          return {
+            id: t.taskID,
+            builder: t.buildPack.environment,
+            builderConfig: {
+              entrypoint: t.buildPack.entrypoint,
+            },
+          }
+        } else if (t.buildPack.environment === "deno") {
+          return {
+            id: t.taskID,
+            builder: t.buildPack.environment,
+            builderConfig: {
+              entrypoint: t.buildPack.entrypoint,
+            },
+          }
+        } else if (t.buildPack.environment === "docker") {
+          return {
+            id: t.taskID,
+            builder: t.buildPack.environment,
+            builderConfig: {
+              dockerfile: t.buildPack.dockerfile,
+            },
+          }
+        } else {
+          throw new Error("Unknown environment for taskID=" + t.taskID)
+        }
+    })
+  }
+
+  // Otherwise, fetch the task list from the API.
+  const resp = await got
+    .get(`https://${host}/api/tasks`, {
+      headers: {
+        "X-Token": apiKey,
+        "X-Team-ID": teamID,
+      },
+      searchParams: {
+        repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`
+      }
+    }).json<{
+      tasks: Task[]
+    }>();
+  
+  return resp.tasks
+}
+
 async function buildTask(
-  bp: BuildPack,
+  b: Builder,
   imageTags: string[]
 ): Promise<void> {
-  core.debug(`${JSON.stringify({bp, imageTags}, null, 2)}`)
+  core.debug(`${JSON.stringify({b, imageTags}, null, 2)}`)
 
   // Generate a Dockerfile based on the build-pack:
-  const dir = await tmpDir(hash(bp))
+  const dir = await tmpDir(hash(b))
   const dockerfilePath = path.join(dir, "Dockerfile");
-  const dockerfile = await getDockerfile(bp);
+  const dockerfile = await getDockerfile(b);
   await fs.writeFile(dockerfilePath, dockerfile);
   core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: \n${dockerfile}`);
 
-  const cacheDir = `/tmp/.buildx-cache/${hash(bp)}`
+  const cacheDir = `/tmp/.buildx-cache/${hash(b)}`
   await fs.mkdir(cacheDir, {
     recursive: true,
   });
