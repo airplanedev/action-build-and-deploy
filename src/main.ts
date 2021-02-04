@@ -113,7 +113,7 @@ type Task = Builder & {
 async function getTasks(host: string, apiKey: string, teamID: string): Promise<Task[]> {
   // For backwards compatibility, accept a hardcoded list of tasks, if provided.
   const tasksInput = core.getInput("tasks")
-  if (tasksInput !== "") {
+  if (!tasksInput) {
     const tasks = JSON.parse(tasksInput) as Array<{
       taskID: string
       buildPack:
