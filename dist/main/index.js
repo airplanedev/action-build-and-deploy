@@ -15248,11 +15248,9 @@ function getTasks(host, apiKey, teamID) {
     return main_awaiter(this, void 0, void 0, function* () {
         // For backwards compatibility, accept a hardcoded list of tasks, if provided.
         const tasksInput = core.getInput("tasks");
-        core.debug(`tasksInput: ${tasksInput}`);
         if (!tasksInput) {
             // Translate the old format for buildpacks into the corresponding builders.
             const tasks = JSON.parse(tasksInput);
-            core.debug(`tasks: ${tasks}`);
             if (tasks.length > 0) {
                 return tasks.map((t) => {
                     if (t.buildPack.environment === "go") {
@@ -15289,7 +15287,7 @@ function getTasks(host, apiKey, teamID) {
             }
         }
         // Otherwise, fetch the task list from the API.
-        const req = yield source_default().get(`https://${host}/api/tasks`, {
+        const resp = yield source_default().get(`https://${host}/api/tasks`, {
             headers: {
                 "X-Token": apiKey,
                 "X-Team-ID": teamID,
@@ -15297,15 +15295,8 @@ function getTasks(host, apiKey, teamID) {
             searchParams: {
                 repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`
             }
-        });
-        core.debug(`req: ${req}`);
-        core.debug(`req: ${req.url}`);
-        core.debug(`req: ${req.body}`);
-        // const resp = await req.json<{
-        //     tasks: Task[]
-        //   }>();
-        return [];
-        // return resp.tasks
+        }).json();
+        return resp.tasks;
     });
 }
 function buildTask(b, imageTags) {
