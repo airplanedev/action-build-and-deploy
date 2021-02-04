@@ -71,7 +71,7 @@ async function main() {
       b,
       imageTags: [
         ...(builds[key]?.imageTags || []),
-        ...tags.map((tag) => `${resp.repo}/${toImageName(task.id)}:${tag}`),
+        ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
       ],
     }
   }
@@ -89,7 +89,7 @@ async function main() {
   }
 
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-  console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.id}`).join("\n")}`)
+  console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`)
   console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`)
 }
 
@@ -107,7 +107,7 @@ async function getTags() {
 }
 
 type Task = Builder & {
-  id: string
+  taskID: string
 }
 
 async function getTasks(host: string, apiKey: string, teamID: string): Promise<Task[]> {
@@ -136,7 +136,7 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
       return tasks.map((t): Task => {
         if (t.buildPack.environment === "go") {
           return {
-            id: t.taskID,
+            taskID: t.taskID,
             builder: t.buildPack.environment,
             builderConfig: {
               entrypoint: t.buildPack.entrypoint,
@@ -144,7 +144,7 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
           }
         } else if (t.buildPack.environment === "deno") {
           return {
-            id: t.taskID,
+            taskID: t.taskID,
             builder: t.buildPack.environment,
             builderConfig: {
               entrypoint: t.buildPack.entrypoint,
@@ -152,7 +152,7 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
           }
         } else if (t.buildPack.environment === "docker") {
           return {
-            id: t.taskID,
+            taskID: t.taskID,
             builder: t.buildPack.environment,
             builderConfig: {
               dockerfile: t.buildPack.dockerfile,

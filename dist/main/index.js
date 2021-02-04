@@ -15215,7 +15215,7 @@ function main() {
                 b,
                 imageTags: [
                     ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.imageTags) || []),
-                    ...tags.map((tag) => `${resp.repo}/${toImageName(task.id)}:${tag}`),
+                    ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
                 ],
             };
         }
@@ -15230,7 +15230,7 @@ function main() {
             }
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-        console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.id}`).join("\n")}`);
+        console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
@@ -15255,7 +15255,7 @@ function getTasks(host, apiKey, teamID) {
                 return tasks.map((t) => {
                     if (t.buildPack.environment === "go") {
                         return {
-                            id: t.taskID,
+                            taskID: t.taskID,
                             builder: t.buildPack.environment,
                             builderConfig: {
                                 entrypoint: t.buildPack.entrypoint,
@@ -15264,7 +15264,7 @@ function getTasks(host, apiKey, teamID) {
                     }
                     else if (t.buildPack.environment === "deno") {
                         return {
-                            id: t.taskID,
+                            taskID: t.taskID,
                             builder: t.buildPack.environment,
                             builderConfig: {
                                 entrypoint: t.buildPack.entrypoint,
@@ -15273,7 +15273,7 @@ function getTasks(host, apiKey, teamID) {
                     }
                     else if (t.buildPack.environment === "docker") {
                         return {
-                            id: t.taskID,
+                            taskID: t.taskID,
                             builder: t.buildPack.environment,
                             builderConfig: {
                                 dockerfile: t.buildPack.dockerfile,
