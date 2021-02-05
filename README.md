@@ -31,39 +31,9 @@ jobs:
           api-key: ${{ secrets.AIRPLANE_API_KEY }}
           # TODO(you): reach out to the Airplane team to get your team's ID
           team-id: abcdefghijk
-          # TODO(you): configure your Airplane tasks. The examples below show each
-          # of the supported environments. Reach out to the team if there's an
-          # environment you'd like supported.
-          #
-          # You can get a Task ID from the URL bar, for example:
-          #   https://app.airplane.dev/tasks/1234567890
-          tasks: |
-            [
-              {
-                "taskID: "1234567890",
-                "buildPack": {
-                  "environment": "go",
-                  "entrypoint": "./cmd/scripts/createWeather/main.go"
-                }
-              },
-              {
-                "taskID: "1234567890",
-                "buildPack": {
-                  "environment": "deno",
-                  "entrypoint": "./src/createWeather.ts"
-                }
-              },
-              {
-                "taskID: "1234567890",
-                "buildPack": {
-                  "environment": "docker",
-                  "dockerfile": "./Dockerfile"
-                }
-              }
-            ]
 ```
 
-On every commit, your Airplane tasks will be uploaded. You'll be able to reference uploaded code using the shortened commit SHA or branch name. You can also see these tags in your workflow logs.
+On every commit, all Airplane tasks connected to that GitHub repo will be uploaded. You'll be able to reference uploaded code using the shortened commit SHA or branch name. You can also see these tags in your workflow logs.
 
 > ⚠️ Your branch name may be adjusted to make it a valid Docker tag name.
 
