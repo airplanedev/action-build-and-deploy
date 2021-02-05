@@ -13729,13 +13729,13 @@ module.exports.default = normalizeUrl;
 
 /***/ }),
 
-/***/ 856:
+/***/ 4856:
 /***/ ((module, exports, __webpack_require__) => {
 
 "use strict";
 
 
-var crypto = __webpack_require__(417);
+var crypto = __webpack_require__(6417);
 
 /**
  * Exported function
@@ -15089,10 +15089,10 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
     });
 };
 
-function getDockerfile(bp) {
+function getDockerfile(b) {
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
-        if (bp.environment === "go") {
+        if (b.builder === "go") {
             contents = `
       FROM golang:1.15.7-alpine3.13 as builder
 
@@ -15103,7 +15103,7 @@ function getDockerfile(bp) {
 
       ADD . .
 
-      RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags '-w' -o main ${bp.entrypoint}
+      RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags '-w' -o main ${b.builderConfig.entrypoint}
 
       FROM gcr.io/distroless/static
 
@@ -15112,21 +15112,21 @@ function getDockerfile(bp) {
       ENTRYPOINT ["/bin/main"]
     `;
         }
-        else if (bp.environment === "deno") {
+        else if (b.builder === "deno") {
             contents = `
       FROM hayd/alpine-deno:1.7.1
 
       WORKDIR /airplane
 
       ADD . .
-      RUN deno cache ${bp.entrypoint}
+      RUN deno cache ${b.builderConfig.entrypoint}
 
       USER deno
-      ENTRYPOINT ["deno", "run", "${bp.entrypoint}"]
+      ENTRYPOINT ["deno", "run", "${b.builderConfig.entrypoint}"]
     `;
         }
-        else if (bp.environment === "docker") {
-            return yield external_fs_.promises.readFile(bp.dockerfile, {
+        else if (b.builder === "docker") {
+            return yield external_fs_.promises.readFile(b.builderConfig.dockerfile, {
                 encoding: 'utf-8',
             });
         }
@@ -15138,7 +15138,7 @@ function getDockerfile(bp) {
 }
 
 // EXTERNAL MODULE: ./node_modules/object-hash/index.js
-var object_hash = __webpack_require__(856);
+var object_hash = __webpack_require__(4856);
 var object_hash_default = /*#__PURE__*/__webpack_require__.n(object_hash);
 
 // CONCATENATED MODULE: ./src/main.ts
@@ -15178,11 +15178,7 @@ function main() {
         const teamID = core.getInput("team-id");
         const host = core.getInput("host");
         const parallel = core.getInput("parallel") === "true";
-        // Hardcode the tasks and build-packs for now. For now, we want to show
-        // this e2e with our internal scripts.
-        //
-        // TODO: pull this build-pack data from the API.
-        const tasks = JSON.parse(core.getInput("tasks"));
+        const tasks = yield getTasks(host, apiKey, teamID);
         // Get an Airplane Registry token:
         const resp = yield source_default().post(`https://${host}/agent/registry/getToken`, {
             headers: {
@@ -15210,9 +15206,13 @@ function main() {
         // Group together tasks by build pack, so that we build the minimum number of images.
         const builds = {};
         for (const task of tasks) {
-            const key = object_hash_default()(task.buildPack);
+            const b = {
+                builder: task.builder,
+                builderConfig: task.builderConfig,
+            };
+            const key = object_hash_default()(b);
             builds[key] = {
-                bp: task.buildPack,
+                b,
                 imageTags: [
                     ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.imageTags) || []),
                     ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
@@ -15222,15 +15222,15 @@ function main() {
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
         if (parallel) {
-            yield Promise.all(Object.values(builds).map(build => buildTask(build.bp, build.imageTags)));
+            yield Promise.all(Object.values(builds).map(build => buildTask(build.b, build.imageTags)));
         }
         else {
             for (const build of Object.values(builds)) {
-                yield buildTask(build.bp, build.imageTags);
+                yield buildTask(build.b, build.imageTags);
             }
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-        console.log(`Published tasks: ${tasks.map(task => `\n  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
+        console.log(`Published tasks: \n${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
@@ -15244,16 +15244,69 @@ function getTags() {
         return [shortSHA, branch];
     });
 }
-function buildTask(bp, imageTags) {
+function getTasks(host, apiKey, teamID) {
     return main_awaiter(this, void 0, void 0, function* () {
-        core.debug(`${JSON.stringify({ bp, imageTags }, null, 2)}`);
+        // For backwards compatibility, accept a hardcoded list of tasks, if provided.
+        const tasksInput = core.getInput("tasks");
+        // Translate the old format for buildpacks into the corresponding builders.
+        const tasks = JSON.parse(tasksInput);
+        if (tasks.length > 0) {
+            return tasks.map((t) => {
+                if (t.buildPack.environment === "go") {
+                    return {
+                        taskID: t.taskID,
+                        builder: t.buildPack.environment,
+                        builderConfig: {
+                            entrypoint: t.buildPack.entrypoint,
+                        },
+                    };
+                }
+                else if (t.buildPack.environment === "deno") {
+                    return {
+                        taskID: t.taskID,
+                        builder: t.buildPack.environment,
+                        builderConfig: {
+                            entrypoint: t.buildPack.entrypoint,
+                        },
+                    };
+                }
+                else if (t.buildPack.environment === "docker") {
+                    return {
+                        taskID: t.taskID,
+                        builder: t.buildPack.environment,
+                        builderConfig: {
+                            dockerfile: t.buildPack.dockerfile,
+                        },
+                    };
+                }
+                else {
+                    throw new Error("Unknown environment for taskID=" + t.taskID);
+                }
+            });
+        }
+        // Otherwise, fetch the task list from the API.
+        const resp = yield source_default().get(`https://${host}/api/tasks`, {
+            headers: {
+                "X-Token": apiKey,
+                "X-Team-ID": teamID,
+            },
+            searchParams: {
+                repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`
+            }
+        }).json();
+        return resp.tasks;
+    });
+}
+function buildTask(b, imageTags) {
+    return main_awaiter(this, void 0, void 0, function* () {
+        core.debug(`${JSON.stringify({ b, imageTags }, null, 2)}`);
         // Generate a Dockerfile based on the build-pack:
-        const dir = yield tmpDir(object_hash_default()(bp));
+        const dir = yield tmpDir(object_hash_default()(b));
         const dockerfilePath = external_path_default().join(dir, "Dockerfile");
-        const dockerfile = yield getDockerfile(bp);
+        const dockerfile = yield getDockerfile(b);
         yield external_fs_.promises.writeFile(dockerfilePath, dockerfile);
         core.debug(`wrote Dockerfile to ${dockerfilePath} with contents: \n${dockerfile}`);
-        const cacheDir = `/tmp/.buildx-cache/${object_hash_default()(bp)}`;
+        const cacheDir = `/tmp/.buildx-cache/${object_hash_default()(b)}`;
         yield external_fs_.promises.mkdir(cacheDir, {
             recursive: true,
         });
@@ -15324,7 +15377,7 @@ module.exports = require("child_process");;
 
 /***/ }),
 
-/***/ 417:
+/***/ 6417:
 /***/ ((module) => {
 
 "use strict";
