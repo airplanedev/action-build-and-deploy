@@ -17,14 +17,17 @@ async function run(): Promise<void> {
 }
 
 async function main() {
+  core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`)
+
   const apiKey: string = core.getInput("api-key");
   // TODO: remove this dependency on the team id
   const teamID: string = core.getInput("team-id");
   const host: string = core.getInput("host");
   const parallel = core.getInput("parallel") === "true";
+  const rawBuildArgs = core.getInput("build-args");
+  const buildArgs = rawBuildArgs.split('\n').map(arg => arg.trim()).filter(arg => arg !== "")
+  core.debug(`got rawBuildArgs='${rawBuildArgs}' translated into buildArgs=${buildArgs}`)
   const tasks = await getTasks(host, apiKey, teamID);
-
-  core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`)
 
   // Get an Airplane Registry token:
   const resp = await got
@@ -82,11 +85,11 @@ async function main() {
   console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
   if (parallel) {
     await Promise.all(
-      Object.values(builds).map(build => buildTask(build.b, build.imageTags))
+      Object.values(builds).map(build => buildTask(build.b, build.imageTags, buildArgs))
     );
   } else {
     for (const build of Object.values(builds)) {
-      await buildTask(build.b, build.imageTags)
+      await buildTask(build.b, build.imageTags, buildArgs)
     }
   }
 
@@ -195,7 +198,8 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
 
 async function buildTask(
   b: Builder,
-  imageTags: string[]
+  imageTags: string[],
+  buildArgs: string[]
 ): Promise<void> {
   core.debug(`${JSON.stringify({b, imageTags}, null, 2)}`)
 
@@ -216,6 +220,7 @@ async function buildTask(
     "buildx",
     "build",
     ...imageTags.map((tag) => ["--tag", tag]).flat(1),
+    ...buildArgs.map(arg => ["--build-arg", arg]).flat(1),
     "--file",
     dockerfilePath,
     "--cache-from",

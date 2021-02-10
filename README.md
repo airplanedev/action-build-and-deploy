@@ -37,6 +37,22 @@ On every commit, all Airplane tasks connected to that GitHub repo will be upload
 
 > ⚠️ Your branch name may be adjusted to make it a valid Docker tag name.
 
+## Configuration
+
+By default, this Action doesn't need any further configuration.
+
+However, if you are building your own Dockerfiles using this Action, then you may want to pass through build arguments. A common example is to provide credentials to pull down dependencies. You can do this with the `build-args` input:
+
+```yaml
+- name: Upload Airplane Tasks
+  # ...
+  with:
+    # ...
+    build-args: |
+      SOME_CREDENTIAL=foobar
+      ANOTHER_CREDENTIAL=${{ env.ENV_VAR }}
+```
+
 ## Development
 
 ```sh
