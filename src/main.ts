@@ -22,7 +22,6 @@ async function main() {
   const teamID: string = core.getInput("team-id");
   const host: string = core.getInput("host");
   const parallel = core.getInput("parallel") === "true";
-  const defaultBranch = core.getInput("default-branch") ?? "";
   const tasks = await getTasks(host, apiKey, teamID);
 
   core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`)
@@ -61,7 +60,7 @@ async function main() {
   // Create a temporary directory for building all images in.
   await tmpDir();
 
-  const tags = await getTags(defaultBranch)
+  const tags = await getTags()
   // Group together tasks by build pack, so that we build the minimum number of images.
   const builds: Record<string, { b: Builder, imageTags: string[] }> = {}
   for (const task of tasks) {
@@ -96,7 +95,7 @@ async function main() {
   console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`)
 }
 
-async function getTags(defaultBranch: string) {
+async function getTags() {
   // Fetch the shortest unique SHA (of length at least 7):
   const { stdout: shortSHA } = await exec([
     "git", "rev-parse", "--short=7", github.context.sha
@@ -107,7 +106,11 @@ async function getTags(defaultBranch: string) {
 
   const tags = [shortSHA, sanitizedBranch]
 
-  const defaultBranches = defaultBranch === "" ? ["main", "master"] : [defaultBranch]
+  const defaultBranch = github.context.payload.repository?.default_branch
+  // The default branch should always be available, it just isn't included as a TS type above.
+  // However, as a safety, I'm including a backup of some standard default branches:
+  const defaultBranches = defaultBranch == null ? ["main", "master"] : [defaultBranch]
+  core.debug(`Publishing :latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`)
   if (defaultBranches.includes(branch)) {
     tags.push("latest")
   }

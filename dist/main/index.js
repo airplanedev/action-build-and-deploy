@@ -15171,14 +15171,13 @@ function run() {
     });
 }
 function main() {
-    var _a, _b;
+    var _a;
     return main_awaiter(this, void 0, void 0, function* () {
         const apiKey = core.getInput("api-key");
         // TODO: remove this dependency on the team id
         const teamID = core.getInput("team-id");
         const host = core.getInput("host");
         const parallel = core.getInput("parallel") === "true";
-        const defaultBranch = (_a = core.getInput("default-branch")) !== null && _a !== void 0 ? _a : "";
         const tasks = yield getTasks(host, apiKey, teamID);
         core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`);
         // Get an Airplane Registry token:
@@ -15204,7 +15203,7 @@ function main() {
         });
         // Create a temporary directory for building all images in.
         yield tmpDir();
-        const tags = yield getTags(defaultBranch);
+        const tags = yield getTags();
         // Group together tasks by build pack, so that we build the minimum number of images.
         const builds = {};
         for (const task of tasks) {
@@ -15216,7 +15215,7 @@ function main() {
             builds[key] = {
                 b,
                 imageTags: [
-                    ...(((_b = builds[key]) === null || _b === void 0 ? void 0 : _b.imageTags) || []),
+                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.imageTags) || []),
                     ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
                 ],
             };
@@ -15236,7 +15235,8 @@ function main() {
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
-function getTags(defaultBranch) {
+function getTags() {
+    var _a;
     return main_awaiter(this, void 0, void 0, function* () {
         // Fetch the shortest unique SHA (of length at least 7):
         const { stdout: shortSHA } = yield exec_exec([
@@ -15245,7 +15245,11 @@ function getTags(defaultBranch) {
         const branch = github.context.ref.replace(/^refs\/heads\//, "");
         const sanitizedBranch = sanitizeDockerTag(branch);
         const tags = [shortSHA, sanitizedBranch];
-        const defaultBranches = defaultBranch === "" ? ["main", "master"] : [defaultBranch];
+        const defaultBranch = (_a = github.context.payload.repository) === null || _a === void 0 ? void 0 : _a.default_branch;
+        // The default branch should always be available, it just isn't included as a TS type above.
+        // However, as a safety, I'm including a backup of some standard default branches:
+        const defaultBranches = defaultBranch == null ? ["main", "master"] : [defaultBranch];
+        core.debug(`Publishing :latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`);
         if (defaultBranches.includes(branch)) {
             tags.push("latest");
         }

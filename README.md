@@ -31,7 +31,6 @@ jobs:
           api-key: ${{ secrets.AIRPLANE_API_KEY }}
           # TODO(you): reach out to the Airplane team to get your team's ID
           team-id: abcdefghijk
-          default-branch: $default-branch
 ```
 
 On every commit, all Airplane tasks connected to that GitHub repo will be uploaded. You'll be able to reference uploaded code using the shortened commit SHA or branch name. You can also see these tags in your workflow logs.
