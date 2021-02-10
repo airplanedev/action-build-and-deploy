@@ -1,24 +1,24 @@
-import { promises as fs } from 'fs'
+import { promises as fs } from "fs";
 
 export type Builder =
   | {
-      builder: "go";
-      builderConfig: {
-        entrypoint: string
-      }
-    }
-  | {
-      builder: "deno";
-      builderConfig: {
-        entrypoint: string
-      }
-    }
-  | {
-      builder: "docker";
-      builderConfig: {
-        dockerfile: string
-      }
+    builder: "go";
+    builderConfig: {
+      entrypoint: string;
     };
+  }
+  | {
+    builder: "deno";
+    builderConfig: {
+      entrypoint: string;
+    };
+  }
+  | {
+    builder: "docker";
+    builderConfig: {
+      dockerfile: string;
+    };
+  };
 
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
@@ -51,12 +51,12 @@ export async function getDockerfile(b: Builder): Promise<string> {
       RUN deno cache ${b.builderConfig.entrypoint}
 
       USER deno
-      ENTRYPOINT ["deno", "run", "${b.builderConfig.entrypoint}"]
+      ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
   } else if (b.builder === "docker") {
     return await fs.readFile(b.builderConfig.dockerfile, {
-      encoding: 'utf-8',
-    })
+      encoding: "utf-8",
+    });
   }
 
   return contents
