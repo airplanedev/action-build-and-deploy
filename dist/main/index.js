@@ -15246,8 +15246,8 @@ function getTags() {
         const sanitizedBranch = sanitizeDockerTag(branch);
         const tags = [shortSHA, sanitizedBranch];
         const defaultBranch = (_a = github.context.payload.repository) === null || _a === void 0 ? void 0 : _a.default_branch;
-        // The default branchs should always be available, it just isn't included as a type.
-        // Just as a safety, I'm including a backup of some standard default branches:
+        // The default branch should always be available, it just isn't included as a TS type above.
+        // However, as a safety, I'm including a backup of some standard default branches:
         const defaultBranches = defaultBranch == null ? ["main", "master"] : [defaultBranch];
         core.debug(`Publishing :latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`);
         if (defaultBranches.includes(branch)) {
