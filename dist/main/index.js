@@ -15173,13 +15173,16 @@ function run() {
 function main() {
     var _a;
     return main_awaiter(this, void 0, void 0, function* () {
+        core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`);
         const apiKey = core.getInput("api-key");
         // TODO: remove this dependency on the team id
         const teamID = core.getInput("team-id");
         const host = core.getInput("host");
         const parallel = core.getInput("parallel") === "true";
+        const rawBuildArgs = core.getInput("build-args");
+        const buildArgs = rawBuildArgs.split('\n').map(arg => arg.trim()).filter(arg => arg !== "");
+        core.debug(`got rawBuildArgs='${rawBuildArgs}' translated into buildArgs=${buildArgs}`);
         const tasks = yield getTasks(host, apiKey, teamID);
-        core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`);
         // Get an Airplane Registry token:
         const resp = yield source_default().post(`https://${host}/agent/registry/getToken`, {
             headers: {
@@ -15223,11 +15226,11 @@ function main() {
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
         if (parallel) {
-            yield Promise.all(Object.values(builds).map(build => buildTask(build.b, build.imageTags)));
+            yield Promise.all(Object.values(builds).map(build => buildTask(build.b, build.imageTags, buildArgs)));
         }
         else {
             for (const build of Object.values(builds)) {
-                yield buildTask(build.b, build.imageTags);
+                yield buildTask(build.b, build.imageTags, buildArgs);
             }
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
@@ -15309,7 +15312,7 @@ function getTasks(host, apiKey, teamID) {
         return resp.tasks;
     });
 }
-function buildTask(b, imageTags) {
+function buildTask(b, imageTags, buildArgs) {
     return main_awaiter(this, void 0, void 0, function* () {
         core.debug(`${JSON.stringify({ b, imageTags }, null, 2)}`);
         // Generate a Dockerfile based on the build-pack:
@@ -15327,6 +15330,7 @@ function buildTask(b, imageTags) {
             "buildx",
             "build",
             ...imageTags.map((tag) => ["--tag", tag]).flat(1),
+            ...buildArgs.map(arg => ["--build-arg", arg]).flat(1),
             "--file",
             dockerfilePath,
             "--cache-from",

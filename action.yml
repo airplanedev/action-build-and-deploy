@@ -23,6 +23,9 @@ inputs:
     required: false
     description: Override the Airplane API host.
     default: api.airplane.dev
+  build-args:
+    required: false
+    description: Provide build arguments to docker build, f.e. to pass through credentials.
 runs:
   using: "node12"
   main: dist/main/index.js
