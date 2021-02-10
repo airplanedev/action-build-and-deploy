@@ -41,7 +41,7 @@ On every commit, all Airplane tasks connected to that GitHub repo will be upload
 
 By default, this Action doesn't need any further configuration.
 
-However, if you are building your own Dockerfiles using this Action then you may want to pass through build arguments. For example, to provide credentials for pulling down dependencies. You can do this with the `build-args` input:
+However, if you are building your own Dockerfiles using this Action, then you may want to pass through build arguments. A common example is to provide credentials to pull down dependencies. You can do this with the `build-args` input:
 
 ```yaml
 - name: Upload Airplane Tasks
