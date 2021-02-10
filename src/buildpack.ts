@@ -41,8 +41,6 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
       ENTRYPOINT ["/bin/main"]
     `;
-
-    // test
   } else if (b.builder === "deno") {
     contents = `
       FROM hayd/alpine-deno:1.7.1
