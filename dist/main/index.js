@@ -15242,8 +15242,9 @@ function getTags(defaultBranch) {
         const { stdout: shortSHA } = yield exec_exec([
             "git", "rev-parse", "--short=7", github.context.sha
         ]);
-        const branch = sanitizeDockerTag(github.context.ref.replace(/^refs\/heads\//, ""));
-        const tags = [shortSHA, branch];
+        const branch = github.context.ref.replace(/^refs\/heads\//, "");
+        const sanitizedBranch = sanitizeDockerTag(branch);
+        const tags = [shortSHA, sanitizedBranch];
         const defaultBranches = defaultBranch === "" ? ["main", "master"] : [defaultBranch];
         if (defaultBranches.includes(branch)) {
             tags.push("latest");

@@ -102,11 +102,10 @@ async function getTags(defaultBranch: string) {
     "git", "rev-parse", "--short=7", github.context.sha
   ])
 
-  const branch = sanitizeDockerTag(
-    github.context.ref.replace(/^refs\/heads\//, "")
-  );
+  const branch = github.context.ref.replace(/^refs\/heads\//, "")
+  const sanitizedBranch = sanitizeDockerTag(branch);
 
-  const tags = [shortSHA, branch]
+  const tags = [shortSHA, sanitizedBranch]
 
   const defaultBranches = defaultBranch === "" ? ["main", "master"] : [defaultBranch]
   if (defaultBranches.includes(branch)) {
