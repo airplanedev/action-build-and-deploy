@@ -15122,12 +15122,12 @@ function getDockerfile(b) {
       RUN deno cache ${b.builderConfig.entrypoint}
 
       USER deno
-      ENTRYPOINT ["deno", "run", "${b.builderConfig.entrypoint}"]
+      ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
         }
         else if (b.builder === "docker") {
             return yield external_fs_.promises.readFile(b.builderConfig.dockerfile, {
-                encoding: 'utf-8',
+                encoding: "utf-8",
             });
         }
         return contents
