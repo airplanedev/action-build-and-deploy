@@ -15111,6 +15111,7 @@ function getDockerfile(b) {
 
       ENTRYPOINT ["/bin/main"]
     `;
+            // test
         }
         else if (b.builder === "deno") {
             contents = `
