@@ -15245,11 +15245,12 @@ function getTags() {
         const branch = github.context.ref.replace(/^refs\/heads\//, "");
         const sanitizedBranch = sanitizeDockerTag(branch);
         const tags = [shortSHA, sanitizedBranch];
+        console.log(JSON.stringify(github.context, null, 2));
         const defaultBranch = (_a = github.context.payload.repository) === null || _a === void 0 ? void 0 : _a.default_branch;
         const defaultBranches = defaultBranch == null ? ["main", "master"] : [defaultBranch];
-        core.debug(`Publishing latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`);
+        console.log(`Publishing latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`);
         if (defaultBranches.includes(defaultBranch)) {
-            core.debug("publishing to latesti");
+            console.log("publishing to latesti");
             tags.push("latest");
         }
         return tags;
