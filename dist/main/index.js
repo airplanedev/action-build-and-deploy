@@ -15180,7 +15180,7 @@ function main() {
         const parallel = core.getInput("parallel") === "true";
         const defaultBranch = (_a = core.getInput("default-branch")) !== null && _a !== void 0 ? _a : "";
         const tasks = yield getTasks(host, apiKey, teamID);
-        core.debug(`Triggered run for context=${JSON.stringify(github.context)}`);
+        core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`);
         // Get an Airplane Registry token:
         const resp = yield source_default().post(`https://${host}/agent/registry/getToken`, {
             headers: {
@@ -15244,11 +15244,11 @@ function getTags(defaultBranch) {
         ]);
         const branch = sanitizeDockerTag(github.context.ref.replace(/^refs\/heads\//, ""));
         const tags = [shortSHA, branch];
-        const branches = defaultBranch === "" ? ["main", "master"] : [defaultBranch];
-        if (branches.some(b => github.context.ref === `/refs/heads/${b}`)) {
+        const defaultBranches = defaultBranch === "" ? ["main", "master"] : [defaultBranch];
+        if (defaultBranches.includes(branch)) {
             tags.push("latest");
         }
-        core.debug(`default branch = ${defaultBranch}; branches = ${branches}; tags = ${tags}`);
+        core.debug(`default branch = ${defaultBranch}; branches = ${defaultBranches}; tags = ${tags}`);
         return tags;
     });
 }
