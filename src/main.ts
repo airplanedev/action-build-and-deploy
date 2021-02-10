@@ -25,6 +25,8 @@ async function main() {
   const defaultBranch = core.getInput("default-branch") ?? "";
   const tasks = await getTasks(host, apiKey, teamID);
 
+  core.debug(`Triggered run for context=${JSON.stringify(github.context.ref)}`)
+
   // Get an Airplane Registry token:
   const resp = await got
     .post(`https://${host}/agent/registry/getToken`, {

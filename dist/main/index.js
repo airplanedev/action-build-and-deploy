@@ -15180,6 +15180,7 @@ function main() {
         const parallel = core.getInput("parallel") === "true";
         const defaultBranch = (_a = core.getInput("default-branch")) !== null && _a !== void 0 ? _a : "";
         const tasks = yield getTasks(host, apiKey, teamID);
+        core.debug(`Triggered run for context=${JSON.stringify(github.context.ref)}`);
         // Get an Airplane Registry token:
         const resp = yield source_default().post(`https://${host}/agent/registry/getToken`, {
             headers: {
