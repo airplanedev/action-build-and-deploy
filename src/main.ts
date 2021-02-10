@@ -25,7 +25,7 @@ async function main() {
   const defaultBranch = core.getInput("default-branch") ?? "";
   const tasks = await getTasks(host, apiKey, teamID);
 
-  core.debug(`Triggered run for context=${JSON.stringify(github.context.ref)}`)
+  core.debug(`Triggered run for context=${JSON.stringify(github.context)}`)
 
   // Get an Airplane Registry token:
   const resp = await got
@@ -112,6 +112,7 @@ async function getTags(defaultBranch: string) {
   if (branches.some(b => github.context.ref === `/refs/heads/${b}`)) {
     tags.push("latest")
   }
+  core.debug(`default branch = ${defaultBranch}; branches = ${branches}; tags = ${tags}`)
 
   return tags;
 }
