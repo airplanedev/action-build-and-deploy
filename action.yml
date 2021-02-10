@@ -23,6 +23,9 @@ inputs:
     required: false
     description: Override the Airplane API host.
     default: api.airplane.dev
+  default-branch:
+    required: false
+    description: Specify which branch to tag images with :latest from. By default, it will do so on 'main' and 'master'.
 runs:
   using: "node12"
   main: dist/main/index.js
