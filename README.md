@@ -50,7 +50,7 @@ However, if you are building your own Dockerfiles using this Action then you may
     # ...
     build-args: |
       SOME_CREDENTIAL=foobar
-      ANOTHER_CREDENTIAL=${ENV_VAR}
+      ANOTHER_CREDENTIAL=${{ env.ENV_VAR }}
 ```
 
 ## Development
