@@ -8,4 +8,7 @@ jobs:
       - name: Install Dependencies
         run: yarn
       - name: Run Tests
-        run: yarn build
+        run: |
+          yarn build
+          # Detects if you have changes to src/ that haven't been compiled into dist/
+          exit $(git status --porcelain=v1 2>/dev/null | wc -l)
