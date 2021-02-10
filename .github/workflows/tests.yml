@@ -10,5 +10,8 @@ jobs:
       - name: Run Tests
         run: |
           yarn build
+
           # Detects if you have changes to src/ that haven't been compiled into dist/
+          echo "Checking for uncommitted dist/ changes. If this fails, try running `yarn watch`."
+          git status
           exit $(git status --porcelain=v1 2>/dev/null | wc -l)
