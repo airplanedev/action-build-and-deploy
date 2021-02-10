@@ -15248,7 +15248,6 @@ function getTags(defaultBranch) {
         if (defaultBranches.includes(branch)) {
             tags.push("latest");
         }
-        core.debug(`default branch = ${defaultBranch}; branches = ${defaultBranches}; tags = ${tags}`);
         return tags;
     });
 }
