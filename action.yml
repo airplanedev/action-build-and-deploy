@@ -26,7 +26,6 @@ inputs:
   default-branch:
     required: false
     description: Specify which branch to tag images with :latest from.
-    default: main
 runs:
   using: "node12"
   main: dist/main/index.js

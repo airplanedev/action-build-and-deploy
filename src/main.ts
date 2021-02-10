@@ -22,7 +22,7 @@ async function main() {
   const teamID: string = core.getInput("team-id");
   const host: string = core.getInput("host");
   const parallel = core.getInput("parallel") === "true";
-  const defaultBranch = core.getInput("default-branch");
+  const defaultBranch = core.getInput("default-branch") ?? "";
   const tasks = await getTasks(host, apiKey, teamID);
 
   // Get an Airplane Registry token:
@@ -106,7 +106,8 @@ async function getTags(defaultBranch: string) {
 
   const tags = [shortSHA, branch]
 
-  if (github.context.ref === `/refs/heads/${defaultBranch}`) {
+  const branches = defaultBranch === "" ? ["main", "master"] : [defaultBranch]
+  if (branches.some(b => github.context.ref === `/refs/heads/${b}`)) {
     tags.push("latest")
   }
 
@@ -206,7 +207,6 @@ async function buildTask(
     recursive: true,
   });
 
-  const tags = await getTags()
   await exec([
     "docker",
     "buildx",

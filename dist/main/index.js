@@ -15171,13 +15171,14 @@ function run() {
     });
 }
 function main() {
-    var _a;
+    var _a, _b;
     return main_awaiter(this, void 0, void 0, function* () {
         const apiKey = core.getInput("api-key");
         // TODO: remove this dependency on the team id
         const teamID = core.getInput("team-id");
         const host = core.getInput("host");
         const parallel = core.getInput("parallel") === "true";
+        const defaultBranch = (_a = core.getInput("default-branch")) !== null && _a !== void 0 ? _a : "";
         const tasks = yield getTasks(host, apiKey, teamID);
         // Get an Airplane Registry token:
         const resp = yield source_default().post(`https://${host}/agent/registry/getToken`, {
@@ -15202,7 +15203,7 @@ function main() {
         });
         // Create a temporary directory for building all images in.
         yield tmpDir();
-        const tags = yield getTags();
+        const tags = yield getTags(defaultBranch);
         // Group together tasks by build pack, so that we build the minimum number of images.
         const builds = {};
         for (const task of tasks) {
@@ -15214,7 +15215,7 @@ function main() {
             builds[key] = {
                 b,
                 imageTags: [
-                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.imageTags) || []),
+                    ...(((_b = builds[key]) === null || _b === void 0 ? void 0 : _b.imageTags) || []),
                     ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
                 ],
             };
@@ -15234,14 +15235,19 @@ function main() {
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
-function getTags() {
+function getTags(defaultBranch) {
     return main_awaiter(this, void 0, void 0, function* () {
         // Fetch the shortest unique SHA (of length at least 7):
         const { stdout: shortSHA } = yield exec_exec([
             "git", "rev-parse", "--short=7", github.context.sha
         ]);
         const branch = sanitizeDockerTag(github.context.ref.replace(/^refs\/heads\//, ""));
-        return [shortSHA, branch];
+        const tags = [shortSHA, branch];
+        const branches = defaultBranch === "" ? ["main", "master"] : [defaultBranch];
+        if (branches.some(b => github.context.ref === `/refs/heads/${b}`)) {
+            tags.push("latest");
+        }
+        return tags;
     });
 }
 function getTasks(host, apiKey, teamID) {
@@ -15310,7 +15316,6 @@ function buildTask(b, imageTags) {
         yield external_fs_.promises.mkdir(cacheDir, {
             recursive: true,
         });
-        const tags = yield getTags();
         yield exec_exec([
             "docker",
             "buildx",
