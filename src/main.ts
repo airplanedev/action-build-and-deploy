@@ -106,12 +106,10 @@ async function getTags() {
 
   const tags = [shortSHA, sanitizedBranch]
 
-  console.log(JSON.stringify(github.context, null, 2))
   const defaultBranch = github.context.payload.repository?.default_branch
   const defaultBranches = defaultBranch == null ? ["main", "master"] : [defaultBranch]
-  console.log(`Publishing latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`)
-  if (defaultBranches.includes(defaultBranch)) {
-    console.log("publishing to latesti")
+  core.debug(`Publishing :latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`)
+  if (defaultBranches.includes(branch)) {
     tags.push("latest")
   }
 
