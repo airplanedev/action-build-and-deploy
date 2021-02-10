@@ -15246,7 +15246,9 @@ function getTags(defaultBranch) {
         const sanitizedBranch = sanitizeDockerTag(branch);
         const tags = [shortSHA, sanitizedBranch];
         const defaultBranches = defaultBranch === "" ? ["main", "master"] : [defaultBranch];
+        core.debug(`Publishing latest if defaultBranch=${defaultBranch} (-> ${defaultBranches}) is branch=${branch}`);
         if (defaultBranches.includes(branch)) {
+            core.debug("publishing to latest");
             tags.push("latest");
         }
         return tags;
