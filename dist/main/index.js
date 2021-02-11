@@ -15308,8 +15308,8 @@ function main() {
                 builder: build.b.builder,
                 builderConfig: JSON.stringify(build.b.builderConfig),
                 error: result.status === "fulfilled" ? "" : result.reason.err,
-                tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join("\n"),
-                tags: build.imageTags.join("\n"),
+                tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join(", "),
+                tags: build.imageTags.join(", "),
             };
         }));
         let numFailed = 0;
