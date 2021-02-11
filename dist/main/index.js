@@ -15132,7 +15132,7 @@ function getDockerfile(b) {
                 throw new Error('Unable to find a requirements.txt');
             }
             contents = `
-      FROM python:3
+      FROM python:3.9-buster
 
       WORKDIR /airplane
 

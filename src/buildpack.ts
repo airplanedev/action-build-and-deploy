@@ -67,7 +67,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     }
 
     contents = `
-      FROM python:3
+      FROM python:3.9-buster
 
       WORKDIR /airplane
 
