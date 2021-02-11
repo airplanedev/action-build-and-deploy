@@ -122,9 +122,9 @@ async function main() {
     }
     return {
       status: result.status === "fulfilled" ? "✅" : "❌",
-      error: result.status === "fulfilled" ? "" : result.reason.err,
       builder: build.b.builder,
       builderConfig: JSON.stringify(build.b.builderConfig),
+      error: result.status === "fulfilled" ? "" : result.reason.err,
       tags: build.imageTags.join('\n'),
     }
   }))

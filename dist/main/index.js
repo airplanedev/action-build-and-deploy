@@ -15127,7 +15127,7 @@ function getDockerfile(b) {
     `;
         }
         else if (b.builder === "python") {
-            const requirementsPath = find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
             if (!requirementsPath) {
                 throw new Error('Unable to find a requirements.txt');
             }
@@ -15301,9 +15301,9 @@ function main() {
             }
             return {
                 status: result.status === "fulfilled" ? "✅" : "❌",
-                error: result.status === "fulfilled" ? "" : result.reason.err,
                 builder: build.b.builder,
                 builderConfig: JSON.stringify(build.b.builderConfig),
+                error: result.status === "fulfilled" ? "" : result.reason.err,
                 tags: build.imageTags.join('\n'),
             };
         }));

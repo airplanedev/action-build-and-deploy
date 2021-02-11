@@ -61,7 +61,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
   } else if (b.builder === "python") {
-    const requirementsPath = find("requirements.txt", dirname(b.builderConfig.entrypoint));
+    const requirementsPath = await find("requirements.txt", dirname(b.builderConfig.entrypoint));
     if (!requirementsPath) {
       throw new Error('Unable to find a requirements.txt')
     }
