@@ -15291,6 +15291,9 @@ function main() {
         }
         console.table(results.map(result => {
             const build = result.status === "fulfilled" ? result.value : result.reason.build;
+            if (!build) {
+                console.error(`build is undefined? for result: ${result}`);
+            }
             return {
                 status: result.status === "fulfilled" ? "✅" : "❌",
                 error: result.status === "fulfilled" ? "" : result.reason.err,
