@@ -1,4 +1,5 @@
 import { promises as fs } from "fs";
+import { join, dirname } from "path";
 
 export type Builder =
   | {
@@ -60,7 +61,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
   } else if (b.builder === "python") {
-    const requirementsPath = "./requirements.txt";
+    const requirementsPath = find("requirements.txt", dirname(b.builderConfig.entrypoint));
+    if (!requirementsPath) {
+      throw new Error('Unable to find a requirements.txt')
+    }
 
     contents = `
       FROM python:3
@@ -84,4 +88,22 @@ export async function getDockerfile(b: Builder): Promise<string> {
     .split("\n")
     .map((line) => line.trim())
     .join("\n");
+}
+
+async function find(file: string, dir: string): Promise<string | undefined> {
+  const path = join(dir, file)
+  try {
+    await fs.stat(path)
+    return path
+  } catch (_) {
+    // file doesn't exist, continue...
+  }
+
+  // The file doesn't exist, since we couldn't find it
+  // in any directory up to the root.
+  if (dir === "." || dir === "/") {
+    return undefined
+  }
+
+  return find(file, dirname(dir))
 }
