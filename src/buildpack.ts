@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import { existsSync, promises as fs } from "fs";
-import * as path from "path";
+import { join, dirname, sep, relative } from "path";
 
 export type Builder =
   | {
@@ -17,6 +17,12 @@ export type Builder =
     }
   | {
       builder: "node-typescript";
+      builderConfig: {
+        entrypoint: string;
+      };
+    }
+  | {
+      builder: "python";
       builderConfig: {
         entrypoint: string;
       };
@@ -69,10 +75,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
     const { entrypoint } = b.builderConfig;
     // Find the closest directory to entrypoint as working directory
     let workingDir = null;
-    const pathParts = path.dirname(entrypoint).split(path.sep);
+    const pathParts = dirname(entrypoint).split(sep);
     while (pathParts.length >= 0) {
-      if (existsSync(path.join(...pathParts, "package.json"))) {
-        workingDir = path.join(...pathParts);
+      if (existsSync(join(...pathParts, "package.json"))) {
+        workingDir = join(...pathParts);
         break;
       }
       pathParts.pop();
@@ -84,23 +90,24 @@ export async function getDockerfile(b: Builder): Promise<string> {
     }
     // Determine installCommand and installFiles
     let installCommand;
-    const installFiles = [path.join(workingDir, "package.json")];
-    if (existsSync(path.join(workingDir, "package-lock.json"))) {
+    const installFiles = [join(workingDir, "package.json")];
+    if (existsSync(join(workingDir, "package-lock.json"))) {
       installCommand = "npm install";
-      installFiles.push(path.join(workingDir, "package-lock.json"));
+      installFiles.push(join(workingDir, "package-lock.json"));
       core.info(`Detected package-lock.json, running: ${installCommand}`);
     } else {
       installCommand = "yarn";
-      if (existsSync(path.join(workingDir, "yarn.lock"))) {
-        installFiles.push(path.join(workingDir, "yarn.lock"));
+      if (existsSync(join(workingDir, "yarn.lock"))) {
+        installFiles.push(join(workingDir, "yarn.lock"));
       }
       core.info(`Using default install command: ${installCommand}`);
     }
     // Produce a Dockerfile
     const buildDir = ".airplane-build";
-    const relativeEntrypointJS = path
-      .relative(workingDir, b.builderConfig.entrypoint)
-      .replace(/\.ts$/, ".js");
+    const relativeEntrypointJS = relative(
+      workingDir,
+      b.builderConfig.entrypoint
+    ).replace(/\.ts$/, ".js");
     contents = `
       FROM node:${NODE_VERSION}-stretch
 
@@ -118,6 +125,27 @@ export async function getDockerfile(b: Builder): Promise<string> {
       
       ENTRYPOINT ["node", "${buildDir}/${relativeEntrypointJS}"]
     `;
+  } else if (b.builder === "python") {
+    const requirementsPath = await find(
+      "requirements.txt",
+      dirname(b.builderConfig.entrypoint)
+    );
+    if (!requirementsPath) {
+      throw new Error("Unable to find a requirements.txt");
+    }
+
+    contents = `
+      FROM python:3.9-buster
+
+      WORKDIR /airplane
+
+      ADD ${requirementsPath} ${requirementsPath}
+      RUN pip install -r ${requirementsPath}
+
+      ADD . .
+
+      ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
+    `;
   } else if (b.builder === "docker") {
     return await fs.readFile(b.builderConfig.dockerfile, {
       encoding: "utf-8",
@@ -128,4 +156,22 @@ export async function getDockerfile(b: Builder): Promise<string> {
     .split("\n")
     .map((line) => line.trim())
     .join("\n");
+}
+
+async function find(file: string, dir: string): Promise<string | undefined> {
+  const path = join(dir, file);
+  try {
+    await fs.stat(path);
+    return path;
+  } catch (_) {
+    // file doesn't exist, continue...
+  }
+
+  // The file doesn't exist, since we couldn't find it
+  // in any directory up to the root.
+  if (dir === "." || dir === "/") {
+    return undefined;
+  }
+
+  return find(file, dirname(dir));
 }

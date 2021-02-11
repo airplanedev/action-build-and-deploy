@@ -15134,10 +15134,10 @@ function getDockerfile(b) {
             const { entrypoint } = b.builderConfig;
             // Find the closest directory to entrypoint as working directory
             let workingDir = null;
-            const pathParts = external_path_.dirname(entrypoint).split(external_path_.sep);
+            const pathParts = (0,external_path_.dirname)(entrypoint).split(external_path_.sep);
             while (pathParts.length >= 0) {
-                if ((0,external_fs_.existsSync)(external_path_.join(...pathParts, "package.json"))) {
-                    workingDir = external_path_.join(...pathParts);
+                if ((0,external_fs_.existsSync)((0,external_path_.join)(...pathParts, "package.json"))) {
+                    workingDir = (0,external_path_.join)(...pathParts);
                     break;
                 }
                 pathParts.pop();
@@ -15147,23 +15147,22 @@ function getDockerfile(b) {
             }
             // Determine installCommand and installFiles
             let installCommand;
-            const installFiles = [external_path_.join(workingDir, "package.json")];
-            if ((0,external_fs_.existsSync)(external_path_.join(workingDir, "package-lock.json"))) {
+            const installFiles = [(0,external_path_.join)(workingDir, "package.json")];
+            if ((0,external_fs_.existsSync)((0,external_path_.join)(workingDir, "package-lock.json"))) {
                 installCommand = "npm install";
-                installFiles.push(external_path_.join(workingDir, "package-lock.json"));
+                installFiles.push((0,external_path_.join)(workingDir, "package-lock.json"));
                 core.info(`Detected package-lock.json, running: ${installCommand}`);
             }
             else {
                 installCommand = "yarn";
-                if ((0,external_fs_.existsSync)(external_path_.join(workingDir, "yarn.lock"))) {
-                    installFiles.push(external_path_.join(workingDir, "yarn.lock"));
+                if ((0,external_fs_.existsSync)((0,external_path_.join)(workingDir, "yarn.lock"))) {
+                    installFiles.push((0,external_path_.join)(workingDir, "yarn.lock"));
                 }
                 core.info(`Using default install command: ${installCommand}`);
             }
             // Produce a Dockerfile
             const buildDir = ".airplane-build";
-            const relativeEntrypointJS = external_path_.relative(workingDir, b.builderConfig.entrypoint)
-                .replace(/\.ts$/, ".js");
+            const relativeEntrypointJS = (0,external_path_.relative)(workingDir, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
             contents = `
       FROM node:${NODE_VERSION}-stretch
 
@@ -15182,6 +15181,24 @@ function getDockerfile(b) {
       ENTRYPOINT ["node", "${buildDir}/${relativeEntrypointJS}"]
     `;
         }
+        else if (b.builder === "python") {
+            const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            if (!requirementsPath) {
+                throw new Error("Unable to find a requirements.txt");
+            }
+            contents = `
+      FROM python:3.9-buster
+
+      WORKDIR /airplane
+
+      ADD ${requirementsPath} ${requirementsPath}
+      RUN pip install -r ${requirementsPath}
+
+      ADD . .
+
+      ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
+    `;
+        }
         else if (b.builder === "docker") {
             return yield external_fs_.promises.readFile(b.builderConfig.dockerfile, {
                 encoding: "utf-8",
@@ -15191,6 +15208,24 @@ function getDockerfile(b) {
             .split("\n")
             .map((line) => line.trim())
             .join("\n");
+    });
+}
+function find(file, dir) {
+    return buildpack_awaiter(this, void 0, void 0, function* () {
+        const path = (0,external_path_.join)(dir, file);
+        try {
+            yield external_fs_.promises.stat(path);
+            return path;
+        }
+        catch (_) {
+            // file doesn't exist, continue...
+        }
+        // The file doesn't exist, since we couldn't find it
+        // in any directory up to the root.
+        if (dir === "." || dir === "/") {
+            return undefined;
+        }
+        return find(file, (0,external_path_.dirname)(dir));
     });
 }
 
@@ -15228,7 +15263,7 @@ function run() {
     });
 }
 function main() {
-    var _a;
+    var _a, _b;
     return main_awaiter(this, void 0, void 0, function* () {
         core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`);
         const apiKey = core.getInput("api-key");
@@ -15274,24 +15309,74 @@ function main() {
             const key = object_hash_default()(b);
             builds[key] = {
                 b,
+                tasks: [
+                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.tasks) || []),
+                    task,
+                ],
                 imageTags: [
-                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.imageTags) || []),
+                    ...(((_b = builds[key]) === null || _b === void 0 ? void 0 : _b.imageTags) || []),
                     ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
                 ],
             };
         }
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
+        let results = [];
         if (parallel) {
-            yield Promise.all(Object.values(builds).map(build => buildTask(build.b, build.imageTags, buildArgs)));
+            results = yield Promise.allSettled(Object.values(builds).map((build) => main_awaiter(this, void 0, void 0, function* () {
+                try {
+                    yield buildTask(build.b, build.imageTags, buildArgs);
+                }
+                catch (err) {
+                    throw { build, err };
+                }
+                return build;
+            })));
         }
         else {
             for (const build of Object.values(builds)) {
-                yield buildTask(build.b, build.imageTags, buildArgs);
+                try {
+                    yield buildTask(build.b, build.imageTags, buildArgs);
+                    results.push({
+                        status: "fulfilled",
+                        value: build,
+                    });
+                }
+                catch (err) {
+                    results.push({
+                        status: "rejected",
+                        reason: {
+                            build,
+                            err,
+                        },
+                    });
+                }
             }
         }
+        console.table(results.map(result => {
+            const build = result.status === "fulfilled" ? result.value : result.reason.build;
+            if (!build) {
+                console.error(`build is undefined? for result: ${JSON.stringify(result)}`);
+            }
+            return {
+                status: result.status === "fulfilled" ? "✅" : "❌",
+                builder: build.b.builder,
+                builderConfig: JSON.stringify(build.b.builderConfig),
+                error: result.status === "fulfilled" ? "" : result.reason.err,
+                tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join(", "),
+                tags: build.imageTags.join(", "),
+            };
+        }));
+        let numFailed = 0;
+        for (let result of results) {
+            if (result.status === "rejected") {
+                numFailed++;
+            }
+        }
+        if (numFailed > 0) {
+            throw new Error(`${numFailed}/${Object.keys(builds).length} builds failed. Review the table and logs above for more information.`);
+        }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-        console.log(`Published tasks: \n${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
@@ -15321,6 +15406,9 @@ function getTasks(host, apiKey, teamID) {
         // For backwards compatibility, accept a hardcoded list of tasks, if provided.
         const tasksInput = core.getInput("tasks");
         // Translate the old format for buildpacks into the corresponding builders.
+        // Note, we don't support newer builders or builder config here. Folks
+        // that want to use those will want to remove the `tasks` input. The Action
+        // will fetch the config from the Airplane API instead.
         const tasks = JSON.parse(tasksInput);
         if (tasks.length > 0) {
             return tasks.map((t) => {
