@@ -71,23 +71,15 @@ export async function getDockerfile(b: Builder): Promise<string> {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
   } else if (b.builder === "node-typescript") {
-    // Builder runs node Docker image, installs using npm (if package-lock.json) else yarn, then compiles using tsc
-    const { entrypoint } = b.builderConfig;
-    // Find the closest directory to entrypoint as working directory
-    let workingDir = null;
-    const pathParts = dirname(entrypoint).split(sep);
-    while (pathParts.length >= 0) {
-      if (existsSync(join(...pathParts, "package.json"))) {
-        workingDir = join(...pathParts);
-        break;
-      }
-      pathParts.pop();
+    // Find package.json
+    const packageJSONPath = await find(
+      "package.json",
+      dirname(b.builderConfig.entrypoint)
+    );
+    if (!packageJSONPath) {
+      throw new Error("Unable to find package.json");
     }
-    if (workingDir === null) {
-      throw new Error(
-        `Could not find package.json in any directories above ${b.builderConfig.entrypoint}`
-      );
-    }
+    const workingDir = dirname(packageJSONPath);
     // Determine installCommand and installFiles
     let installCommand;
     const installFiles = [join(workingDir, "package.json")];
@@ -104,7 +96,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     }
     // Produce a Dockerfile
     const buildDir = ".airplane-build";
-    const relativeEntrypointJS = relative(
+    const entrypointJS = relative(
       workingDir,
       b.builderConfig.entrypoint
     ).replace(/\.ts$/, ".js");
@@ -114,16 +106,18 @@ export async function getDockerfile(b: Builder): Promise<string> {
       RUN npm install -g typescript@${TYPESCRIPT_VERSION}
       WORKDIR /airplane
       
+      WORKDIR /airplane/${workingDir}
       COPY ${installFiles.join(" ")} ./
       RUN ${installCommand}
       
-      COPY ${workingDir} ./
-      RUN echo "Cleaning ${buildDir} in case it exists" \
+      WORKDIR /airplane
+      COPY . .
+      RUN cd ${workingDir} \
           && rm -rf ${buildDir}/ \
-          && echo "Running tsc" \
           && tsc --outDir ${buildDir}/ --rootDir .
       
-      ENTRYPOINT ["node", "${buildDir}/${relativeEntrypointJS}"]
+      WORKDIR /airplane
+      ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
     `;
   } else if (b.builder === "python") {
     const requirementsPath = await find(
@@ -139,10 +133,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
       WORKDIR /airplane
 
-      ADD ${requirementsPath} ${requirementsPath}
+      COPY ${requirementsPath} ${requirementsPath}
       RUN pip install -r ${requirementsPath}
 
-      ADD . .
+      COPY . .
 
       ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
     `;
