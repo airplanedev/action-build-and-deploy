@@ -115,6 +115,7 @@ async function main() {
     const build: typeof builds[0] = result.status === "fulfilled" ? result.value : result.reason.build
     return {
       status: result.status === "fulfilled" ? "✅" : "❌",
+      error: result.status === "fulfilled" ? "" : result.reason.err,
       builder: build.b.builder,
       builderConfig: JSON.stringify(build.b.builderConfig),
       tags: build.imageTags.join('\n'),
