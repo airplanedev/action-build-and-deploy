@@ -15174,7 +15174,7 @@ function getDockerfile(b) {
       RUN echo "Cleaning ${buildDir} in case it exists" \
           && rm -rf ${buildDir}/ \
           && echo "Running tsc" \
-          && tsc --outDir ${buildDir}/
+          && tsc --outDir ${buildDir}/ --rootDir .
       
       ENTRYPOINT ["node", "${buildDir}/${relativeEntrypointJS}"]
     `;
