@@ -15089,6 +15089,7 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
     });
 };
 
+
 function getDockerfile(b) {
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
@@ -15125,6 +15126,24 @@ function getDockerfile(b) {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
         }
+        else if (b.builder === "python") {
+            const requirementsPath = find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            if (!requirementsPath) {
+                throw new Error('Unable to find a requirements.txt');
+            }
+            contents = `
+      FROM python:3
+
+      WORKDIR /airplane
+
+      ADD ${requirementsPath} ${requirementsPath}
+      RUN pip install -r ${requirementsPath}
+
+      ADD . .
+
+      ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
+    `;
+        }
         else if (b.builder === "docker") {
             return yield external_fs_.promises.readFile(b.builderConfig.dockerfile, {
                 encoding: "utf-8",
@@ -15134,6 +15153,24 @@ function getDockerfile(b) {
             .split("\n")
             .map((line) => line.trim())
             .join("\n");
+    });
+}
+function find(file, dir) {
+    return buildpack_awaiter(this, void 0, void 0, function* () {
+        const path = (0,external_path_.join)(dir, file);
+        try {
+            yield external_fs_.promises.stat(path);
+            return path;
+        }
+        catch (_) {
+            // file doesn't exist, continue...
+        }
+        // The file doesn't exist, since we couldn't find it
+        // in any directory up to the root.
+        if (dir === "." || dir === "/") {
+            return undefined;
+        }
+        return find(file, (0,external_path_.dirname)(dir));
     });
 }
 
@@ -15264,6 +15301,9 @@ function getTasks(host, apiKey, teamID) {
         // For backwards compatibility, accept a hardcoded list of tasks, if provided.
         const tasksInput = core.getInput("tasks");
         // Translate the old format for buildpacks into the corresponding builders.
+        // Note, we don't support newer builders or builder config here. Folks
+        // that want to use those will want to remove the `tasks` input. The Action
+        // will fetch the config from the Airplane API instead.
         const tasks = JSON.parse(tasksInput);
         if (tasks.length > 0) {
             return tasks.map((t) => {

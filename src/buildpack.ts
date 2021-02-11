@@ -76,7 +76,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
       ADD . .
 
-      ENTRYPOINT ["python", "${bp.entrypoint}"]
+      ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
     `;
   } else if (b.builder === "docker") {
     return await fs.readFile(b.builderConfig.dockerfile, {
