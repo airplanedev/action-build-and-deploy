@@ -65,7 +65,7 @@ async function main() {
 
   const tags = await getTags()
   // Group together tasks by build pack, so that we build the minimum number of images.
-  const builds: Record<string, { b: Builder, imageTags: string[] }> = {}
+  const builds: Record<string, { b: Builder, tasks: Task[], imageTags: string[] }> = {}
   for (const task of tasks) {
     const b = {
       builder: task.builder,
@@ -74,6 +74,10 @@ async function main() {
     const key = hash(b)
     builds[key] = {
       b,
+      tasks : [
+        ...(builds[key]?.tasks || []),
+        task,
+      ],
       imageTags: [
         ...(builds[key]?.imageTags || []),
         ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
@@ -83,18 +87,64 @@ async function main() {
 
   // Build and publish each image:
   console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
+  let results: PromiseSettledResult<typeof builds[0]>[] = []
   if (parallel) {
-    await Promise.all(
-      Object.values(builds).map(build => buildTask(build.b, build.imageTags, buildArgs))
+    results = await Promise.allSettled(
+      Object.values(builds).map(async build => {
+        try {
+          await buildTask(build.b, build.imageTags, buildArgs)
+        } catch (err) {
+          throw { build, err }
+        }
+        return build
+      })
     );
   } else {
     for (const build of Object.values(builds)) {
-      await buildTask(build.b, build.imageTags, buildArgs)
+      try {
+        await buildTask(build.b, build.imageTags, buildArgs)
+        results.push({
+          status: "fulfilled",
+          value: build,
+        })
+      } catch (err) {
+        results.push({
+          status: "rejected",
+          reason: {
+            build,
+            err,
+          },
+        })
+      }
     }
   }
 
+  console.table(results.map(result => {
+    const build: typeof builds[0] = result.status === "fulfilled" ? result.value : result.reason.build
+    if (!build) {
+      console.error(`build is undefined? for result: ${JSON.stringify(result)}`)
+    }
+    return {
+      status: result.status === "fulfilled" ? "✅" : "❌",
+      builder: build.b.builder,
+      builderConfig: JSON.stringify(build.b.builderConfig),
+      error: result.status === "fulfilled" ? "" : result.reason.err,
+      tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join(", "),
+      tags: build.imageTags.join(", "),
+    }
+  }))
+
+  let numFailed = 0
+  for (let result of results) {
+    if (result.status === "rejected") {
+      numFailed++
+    }
+  }
+  if (numFailed > 0) {
+    throw new Error(`${numFailed}/${Object.keys(builds).length} builds failed. Review the table and logs above for more information.`)
+  }
+
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-  console.log(`Published tasks: \n${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`)
   console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`)
 }
 
@@ -130,6 +180,9 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
   const tasksInput = core.getInput("tasks")
 
   // Translate the old format for buildpacks into the corresponding builders.
+  // Note, we don't support newer builders or builder config here. Folks
+  // that want to use those will want to remove the `tasks` input. The Action
+  // will fetch the config from the Airplane API instead.
   const tasks = JSON.parse(tasksInput) as Array<{
     taskID: string
     buildPack:
