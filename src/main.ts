@@ -83,14 +83,52 @@ async function main() {
 
   // Build and publish each image:
   console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
+  let results: PromiseSettledResult<typeof builds[0]>[] = []
   if (parallel) {
-    await Promise.all(
-      Object.values(builds).map(build => buildTask(build.b, build.imageTags, buildArgs))
+    results = await Promise.allSettled(
+      Object.values(builds).map(async build => {
+        await buildTask(build.b, build.imageTags, buildArgs)
+        return build
+      })
     );
   } else {
     for (const build of Object.values(builds)) {
-      await buildTask(build.b, build.imageTags, buildArgs)
+      try {
+        await buildTask(build.b, build.imageTags, buildArgs)
+        results.push({
+          status: "fulfilled",
+          value: build,
+        })
+      } catch (err) {
+        results.push({
+          status: "rejected",
+          reason: {
+            build,
+            err,
+          },
+        })
+      }
     }
+  }
+
+  console.table(results.map(result => {
+    const build: typeof builds[0] = result.status === "fulfilled" ? result.value : result.reason.build
+    return {
+      status: result.status === "fulfilled" ? "✅" : "❌",
+      builder: build.b.builder,
+      builderConfig: JSON.stringify(build.b.builderConfig),
+      tags: build.imageTags.join('\n'),
+    }
+  }))
+
+  let numFailed = 0
+  for (let result of results) {
+    if (result.status === "rejected") {
+      numFailed++
+    }
+  }
+  if (numFailed > 0) {
+    throw new Error(`${numFailed}/${builds.length} builds failed. Review the table and logs above for more information.`)
   }
 
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');

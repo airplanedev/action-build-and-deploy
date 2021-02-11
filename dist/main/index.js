@@ -15262,13 +15262,50 @@ function main() {
         }
         // Build and publish each image:
         console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
+        let results = [];
         if (parallel) {
-            yield Promise.all(Object.values(builds).map(build => buildTask(build.b, build.imageTags, buildArgs)));
+            results = yield Promise.allSettled(Object.values(builds).map((build) => main_awaiter(this, void 0, void 0, function* () {
+                yield buildTask(build.b, build.imageTags, buildArgs);
+                return build;
+            })));
         }
         else {
             for (const build of Object.values(builds)) {
-                yield buildTask(build.b, build.imageTags, buildArgs);
+                try {
+                    yield buildTask(build.b, build.imageTags, buildArgs);
+                    results.push({
+                        status: "fulfilled",
+                        value: build,
+                    });
+                }
+                catch (err) {
+                    results.push({
+                        status: "rejected",
+                        reason: {
+                            build,
+                            err,
+                        },
+                    });
+                }
             }
+        }
+        console.table(results.map(result => {
+            const build = result.status === "fulfilled" ? result.value : result.reason.build;
+            return {
+                status: result.status === "fulfilled" ? "✅" : "❌",
+                builder: build.b.builder,
+                builderConfig: JSON.stringify(build.b.builderConfig),
+                tags: build.imageTags.join('\n'),
+            };
+        }));
+        let numFailed = 0;
+        for (let result of results) {
+            if (result.status === "rejected") {
+                numFailed++;
+            }
+        }
+        if (numFailed > 0) {
+            throw new Error(`${numFailed}/${builds.length} builds failed. Review the table and logs above for more information.`);
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
         console.log(`Published tasks: \n${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
