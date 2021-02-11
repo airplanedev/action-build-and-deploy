@@ -15265,7 +15265,12 @@ function main() {
         let results = [];
         if (parallel) {
             results = yield Promise.allSettled(Object.values(builds).map((build) => main_awaiter(this, void 0, void 0, function* () {
-                yield buildTask(build.b, build.imageTags, buildArgs);
+                try {
+                    yield buildTask(build.b, build.imageTags, buildArgs);
+                }
+                catch (err) {
+                    throw { build, err };
+                }
                 return build;
             })));
         }
@@ -15292,7 +15297,7 @@ function main() {
         console.table(results.map(result => {
             const build = result.status === "fulfilled" ? result.value : result.reason.build;
             if (!build) {
-                console.error(`build is undefined? for result: ${result}`);
+                console.error(`build is undefined? for result: ${JSON.stringify(result)}`);
             }
             return {
                 status: result.status === "fulfilled" ? "✅" : "❌",

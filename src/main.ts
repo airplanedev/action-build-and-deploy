@@ -87,7 +87,11 @@ async function main() {
   if (parallel) {
     results = await Promise.allSettled(
       Object.values(builds).map(async build => {
-        await buildTask(build.b, build.imageTags, buildArgs)
+        try {
+          await buildTask(build.b, build.imageTags, buildArgs)
+        } catch (err) {
+          throw { build, err }
+        }
         return build
       })
     );
@@ -114,7 +118,7 @@ async function main() {
   console.table(results.map(result => {
     const build: typeof builds[0] = result.status === "fulfilled" ? result.value : result.reason.build
     if (!build) {
-      console.error(`build is undefined? for result: ${result}`)
+      console.error(`build is undefined? for result: ${JSON.stringify(result)}`)
     }
     return {
       status: result.status === "fulfilled" ? "✅" : "❌",
