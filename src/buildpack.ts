@@ -28,6 +28,9 @@ export type Builder =
       };
     };
 
+const NODE_VERSION = "15.8";
+const TYPESCRIPT_VERSION = 4.1;
+
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
   if (b.builder === "go") {
@@ -63,11 +66,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
     `;
   } else if (b.builder === "node-typescript") {
     // Builder runs node Docker image, installs using npm (if package-lock.json) else yarn, then compiles using tsc
-    const entrypoint = b.builderConfig.entrypoint;
-    const entryDir = path.dirname(entrypoint);
-    const pathParts = entryDir.split(path.sep);
+    const { entrypoint } = b.builderConfig;
     // Find the closest directory to entrypoint as working directory
     let workingDir = null;
+    const pathParts = path.dirname(entrypoint).split(path.sep);
     while (pathParts.length >= 0) {
       if (existsSync(path.join(...pathParts, "package.json"))) {
         workingDir = path.join(...pathParts);
@@ -80,6 +82,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         `Could not find package.json in any directories above ${b.builderConfig.entrypoint}`
       );
     }
+    // Determine installCommand and installFiles
     let installCommand;
     const installFiles = [path.join(workingDir, "package.json")];
     if (existsSync(path.join(workingDir, "package-lock.json"))) {
@@ -93,14 +96,15 @@ export async function getDockerfile(b: Builder): Promise<string> {
       }
       core.info(`Using default install command: ${installCommand}`);
     }
+    // Produce a Dockerfile
     const buildDir = ".airplane-build";
     const relativeEntrypointJS = path
       .relative(workingDir, b.builderConfig.entrypoint)
       .replace(/\.ts$/, ".js");
     contents = `
-      FROM node:15.8-stretch
+      FROM node:${NODE_VERSION}-stretch
 
-      RUN npm install -g typescript@4.1
+      RUN npm install -g typescript@${TYPESCRIPT_VERSION}
       WORKDIR /airplane
       
       COPY ${installFiles.join(" ")} ./
