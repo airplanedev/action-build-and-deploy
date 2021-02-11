@@ -15091,6 +15091,8 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
 
 
 
+const NODE_VERSION = "15.8";
+const TYPESCRIPT_VERSION = 4.1;
 function getDockerfile(b) {
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
@@ -15129,11 +15131,10 @@ function getDockerfile(b) {
         }
         else if (b.builder === "node-typescript") {
             // Builder runs node Docker image, installs using npm (if package-lock.json) else yarn, then compiles using tsc
-            const entrypoint = b.builderConfig.entrypoint;
-            const entryDir = external_path_.dirname(entrypoint);
-            const pathParts = entryDir.split(external_path_.sep);
+            const { entrypoint } = b.builderConfig;
             // Find the closest directory to entrypoint as working directory
             let workingDir = null;
+            const pathParts = external_path_.dirname(entrypoint).split(external_path_.sep);
             while (pathParts.length >= 0) {
                 if ((0,external_fs_.existsSync)(external_path_.join(...pathParts, "package.json"))) {
                     workingDir = external_path_.join(...pathParts);
@@ -15144,6 +15145,7 @@ function getDockerfile(b) {
             if (workingDir === null) {
                 throw new Error(`Could not find package.json in any directories above ${b.builderConfig.entrypoint}`);
             }
+            // Determine installCommand and installFiles
             let installCommand;
             const installFiles = [external_path_.join(workingDir, "package.json")];
             if ((0,external_fs_.existsSync)(external_path_.join(workingDir, "package-lock.json"))) {
@@ -15158,13 +15160,14 @@ function getDockerfile(b) {
                 }
                 core.info(`Using default install command: ${installCommand}`);
             }
+            // Produce a Dockerfile
             const buildDir = ".airplane-build";
             const relativeEntrypointJS = external_path_.relative(workingDir, b.builderConfig.entrypoint)
                 .replace(/\.ts$/, ".js");
             contents = `
-      FROM node:15.8-stretch
+      FROM node:${NODE_VERSION}-stretch
 
-      RUN npm install -g typescript@4.1
+      RUN npm install -g typescript@${TYPESCRIPT_VERSION}
       WORKDIR /airplane
       
       COPY ${installFiles.join(" ")} ./
