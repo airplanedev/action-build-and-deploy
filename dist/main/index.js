@@ -15208,7 +15208,7 @@ function run() {
     });
 }
 function main() {
-    var _a;
+    var _a, _b;
     return main_awaiter(this, void 0, void 0, function* () {
         core.debug(`Triggered run for context=${JSON.stringify(github.context, null, 2)}`);
         const apiKey = core.getInput("api-key");
@@ -15254,8 +15254,12 @@ function main() {
             const key = object_hash_default()(b);
             builds[key] = {
                 b,
+                tasks: [
+                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.tasks) || []),
+                    task,
+                ],
                 imageTags: [
-                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.imageTags) || []),
+                    ...(((_b = builds[key]) === null || _b === void 0 ? void 0 : _b.imageTags) || []),
                     ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
                 ],
             };
@@ -15304,7 +15308,8 @@ function main() {
                 builder: build.b.builder,
                 builderConfig: JSON.stringify(build.b.builderConfig),
                 error: result.status === "fulfilled" ? "" : result.reason.err,
-                tags: build.imageTags.join('\n'),
+                tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join("\n"),
+                tags: build.imageTags.join("\n"),
             };
         }));
         let numFailed = 0;
@@ -15314,10 +15319,9 @@ function main() {
             }
         }
         if (numFailed > 0) {
-            throw new Error(`${numFailed}/${builds.length} builds failed. Review the table and logs above for more information.`);
+            throw new Error(`${numFailed}/${Object.keys(builds).length} builds failed. Review the table and logs above for more information.`);
         }
         console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-        console.log(`Published tasks: \n${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`);
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }

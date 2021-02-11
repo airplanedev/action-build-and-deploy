@@ -65,7 +65,7 @@ async function main() {
 
   const tags = await getTags()
   // Group together tasks by build pack, so that we build the minimum number of images.
-  const builds: Record<string, { b: Builder, imageTags: string[] }> = {}
+  const builds: Record<string, { b: Builder, tasks: Task[], imageTags: string[] }> = {}
   for (const task of tasks) {
     const b = {
       builder: task.builder,
@@ -74,6 +74,10 @@ async function main() {
     const key = hash(b)
     builds[key] = {
       b,
+      tasks : [
+        ...(builds[key]?.tasks || []),
+        task,
+      ],
       imageTags: [
         ...(builds[key]?.imageTags || []),
         ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
@@ -125,7 +129,8 @@ async function main() {
       builder: build.b.builder,
       builderConfig: JSON.stringify(build.b.builderConfig),
       error: result.status === "fulfilled" ? "" : result.reason.err,
-      tags: build.imageTags.join('\n'),
+      tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join("\n"),
+      tags: build.imageTags.join("\n"),
     }
   }))
 
@@ -136,11 +141,10 @@ async function main() {
     }
   }
   if (numFailed > 0) {
-    throw new Error(`${numFailed}/${builds.length} builds failed. Review the table and logs above for more information.`)
+    throw new Error(`${numFailed}/${Object.keys(builds).length} builds failed. Review the table and logs above for more information.`)
   }
 
   console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
-  console.log(`Published tasks: \n${tasks.map(task => `  - https://app.airplane.dev/tasks/${task.taskID}`).join("\n")}`)
   console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`)
 }
 
