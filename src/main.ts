@@ -130,6 +130,9 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
   const tasksInput = core.getInput("tasks")
 
   // Translate the old format for buildpacks into the corresponding builders.
+  // Note, we don't support newer builders or builder config here. Folks
+  // that want to use those will want to remove the `tasks` input. The Action
+  // will fetch the config from the Airplane API instead.
   const tasks = JSON.parse(tasksInput) as Array<{
     taskID: string
     buildPack:

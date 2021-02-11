@@ -14,6 +14,12 @@ export type Builder =
     };
   }
   | {
+    builder: "python";
+    builderConfig: {
+      entrypoint: string;
+    };
+  }
+  | {
     builder: "docker";
     builderConfig: {
       dockerfile: string;
@@ -52,6 +58,21 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
       USER deno
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
+    `;
+  } else if (b.builder === "python") {
+    const requirementsPath = "./requirements.txt";
+
+    contents = `
+      FROM python:3
+
+      WORKDIR /airplane
+
+      ADD ${requirementsPath} ${requirementsPath}
+      RUN pip install -r ${requirementsPath}
+
+      ADD . .
+
+      ENTRYPOINT ["python", "${bp.entrypoint}"]
     `;
   } else if (b.builder === "docker") {
     return await fs.readFile(b.builderConfig.dockerfile, {
