@@ -16,8 +16,9 @@ export type Builder =
       };
     }
   | {
-      builder: "node-typescript";
+      builder: "node";
       builderConfig: {
+        language: "typescript" | "javascript";
         entrypoint: string;
       };
     }
@@ -70,7 +71,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
       USER deno
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
-  } else if (b.builder === "node-typescript") {
+  } else if (b.builder === "node") {
     // Find package.json to determine project root
     const packageJSONPath = await find(
       "package.json",
@@ -95,31 +96,47 @@ export async function getDockerfile(b: Builder): Promise<string> {
       core.info(`Using default install command: ${installCommand}`);
     }
     // Produce a Dockerfile
-    const buildDir = ".airplane-build";
-    const entrypointJS = relative(
-      projectRoot,
-      b.builderConfig.entrypoint
-    ).replace(/\.ts$/, ".js");
-    contents = `
-      FROM node:${NODE_VERSION}-stretch
+    switch (b.builderConfig.language) {
+      case "typescript":
+        const buildDir = ".airplane-build";
+        const entrypointJS = relative(
+          projectRoot,
+          b.builderConfig.entrypoint
+        ).replace(/\.ts$/, ".js");
+        contents = `
+          FROM node:${NODE_VERSION}-stretch
+    
+          RUN npm install -g typescript@${TYPESCRIPT_VERSION}
+          WORKDIR /airplane
+          
+          COPY ${installFiles.join(" ")} ./
+          RUN ${installCommand}
+          
+          COPY ${projectRoot} ./
+          RUN [ -f tsconfig.json ] || cat >tsconfig.json <<TSCONFIG
+          {
+            "include": ["*", "**/*"],
+            "exclude": ["node_modules"]
+          }
+          TSCONFIG
+          RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
+          
+          ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
+        `;
+      case "javascript":
+        contents = `
+          FROM node:${NODE_VERSION}-stretch
+    
+          WORKDIR /airplane
+          
+          COPY ${installFiles.join(" ")} ./
+          RUN ${installCommand}
 
-      RUN npm install -g typescript@${TYPESCRIPT_VERSION}
-      WORKDIR /airplane
-      
-      COPY ${installFiles.join(" ")} ./
-      RUN ${installCommand}
-      
-      COPY ${projectRoot} ./
-      RUN [ -f tsconfig.json ] || cat >tsconfig.json <<TSCONFIG
-      {
-        "include": ["*", "**/*"],
-        "exclude": ["node_modules"]
-      }
-      TSCONFIG
-      RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
-      
-      ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
-    `;
+          COPY ${projectRoot} ./
+          
+          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+        `;
+    }
   } else if (b.builder === "python") {
     const requirementsPath = await find(
       "requirements.txt",

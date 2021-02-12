@@ -15129,57 +15129,67 @@ function getDockerfile(b) {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
         }
-        else if (b.builder === "node-typescript") {
-            // Builder runs node Docker image, installs using npm (if package-lock.json) else yarn, then compiles using tsc
-            const { entrypoint } = b.builderConfig;
-            // Find the closest directory to entrypoint as working directory
-            let workingDir = null;
-            const pathParts = (0,external_path_.dirname)(entrypoint).split(external_path_.sep);
-            while (pathParts.length >= 0) {
-                if ((0,external_fs_.existsSync)((0,external_path_.join)(...pathParts, "package.json"))) {
-                    workingDir = (0,external_path_.join)(...pathParts);
-                    break;
-                }
-                pathParts.pop();
+        else if (b.builder === "node") {
+            // Find package.json to determine project root
+            const packageJSONPath = yield find("package.json", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            if (!packageJSONPath) {
+                throw new Error("Unable to find package.json");
             }
-            if (workingDir === null) {
-                throw new Error(`Could not find package.json in any directories above ${b.builderConfig.entrypoint}`);
-            }
+            const projectRoot = (0,external_path_.dirname)(packageJSONPath);
             // Determine installCommand and installFiles
             let installCommand;
-            const installFiles = [(0,external_path_.join)(workingDir, "package.json")];
-            if ((0,external_fs_.existsSync)((0,external_path_.join)(workingDir, "package-lock.json"))) {
+            const installFiles = [(0,external_path_.join)(projectRoot, "package.json")];
+            if ((0,external_fs_.existsSync)((0,external_path_.join)(projectRoot, "package-lock.json"))) {
                 installCommand = "npm install";
-                installFiles.push((0,external_path_.join)(workingDir, "package-lock.json"));
+                installFiles.push((0,external_path_.join)(projectRoot, "package-lock.json"));
                 core.info(`Detected package-lock.json, running: ${installCommand}`);
             }
             else {
                 installCommand = "yarn";
-                if ((0,external_fs_.existsSync)((0,external_path_.join)(workingDir, "yarn.lock"))) {
-                    installFiles.push((0,external_path_.join)(workingDir, "yarn.lock"));
+                if ((0,external_fs_.existsSync)((0,external_path_.join)(projectRoot, "yarn.lock"))) {
+                    installFiles.push((0,external_path_.join)(projectRoot, "yarn.lock"));
                 }
                 core.info(`Using default install command: ${installCommand}`);
             }
             // Produce a Dockerfile
-            const buildDir = ".airplane-build";
-            const relativeEntrypointJS = (0,external_path_.relative)(workingDir, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
-            contents = `
-      FROM node:${NODE_VERSION}-stretch
+            switch (b.builderConfig.language) {
+                case "typescript":
+                    const buildDir = ".airplane-build";
+                    const entrypointJS = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
+                    contents = `
+          FROM node:${NODE_VERSION}-stretch
+    
+          RUN npm install -g typescript@${TYPESCRIPT_VERSION}
+          WORKDIR /airplane
+          
+          COPY ${installFiles.join(" ")} ./
+          RUN ${installCommand}
+          
+          COPY ${projectRoot} ./
+          RUN [ -f tsconfig.json ] || cat >tsconfig.json <<TSCONFIG
+          {
+            "include": ["*", "**/*"],
+            "exclude": ["node_modules"]
+          }
+          TSCONFIG
+          RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
+          
+          ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
+        `;
+                case "javascript":
+                    contents = `
+          FROM node:${NODE_VERSION}-stretch
+    
+          WORKDIR /airplane
+          
+          COPY ${installFiles.join(" ")} ./
+          RUN ${installCommand}
 
-      RUN npm install -g typescript@${TYPESCRIPT_VERSION}
-      WORKDIR /airplane
-      
-      COPY ${installFiles.join(" ")} ./
-      RUN ${installCommand}
-      
-      COPY ${workingDir} ./
-      RUN echo "Cleaning ${buildDir} in case it exists" \
-          && rm -rf ${buildDir}/ \
-          && echo "Running tsc" \
-          && tsc --outDir ${buildDir}/ --rootDir .
-      
-      ENTRYPOINT ["node", "${buildDir}/${relativeEntrypointJS}"]
-    `;
+          COPY ${projectRoot} ./
+          
+          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+        `;
+            }
         }
         else if (b.builder === "python") {
             const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
@@ -15191,10 +15201,10 @@ function getDockerfile(b) {
 
       WORKDIR /airplane
 
-      ADD ${requirementsPath} ${requirementsPath}
+      COPY ${requirementsPath} ${requirementsPath}
       RUN pip install -r ${requirementsPath}
 
-      ADD . .
+      COPY . .
 
       ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
     `;
