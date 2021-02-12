@@ -112,7 +112,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
           RUN ${installCommand}
           
           COPY ${projectRoot} ./
-          RUN [ -f tsconfig.json ] || echo echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json
+          RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json
           RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
           
           ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
