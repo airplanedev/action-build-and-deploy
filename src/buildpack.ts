@@ -71,7 +71,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
   } else if (b.builder === "node-typescript") {
-    // Find package.json
+    // Find package.json to determine project root
     const packageJSONPath = await find(
       "package.json",
       dirname(b.builderConfig.entrypoint)
@@ -79,25 +79,25 @@ export async function getDockerfile(b: Builder): Promise<string> {
     if (!packageJSONPath) {
       throw new Error("Unable to find package.json");
     }
-    const workingDir = dirname(packageJSONPath);
+    const projectRoot = dirname(packageJSONPath);
     // Determine installCommand and installFiles
     let installCommand;
-    const installFiles = [join(workingDir, "package.json")];
-    if (existsSync(join(workingDir, "package-lock.json"))) {
+    const installFiles = [join(projectRoot, "package.json")];
+    if (existsSync(join(projectRoot, "package-lock.json"))) {
       installCommand = "npm install";
-      installFiles.push(join(workingDir, "package-lock.json"));
+      installFiles.push(join(projectRoot, "package-lock.json"));
       core.info(`Detected package-lock.json, running: ${installCommand}`);
     } else {
       installCommand = "yarn";
-      if (existsSync(join(workingDir, "yarn.lock"))) {
-        installFiles.push(join(workingDir, "yarn.lock"));
+      if (existsSync(join(projectRoot, "yarn.lock"))) {
+        installFiles.push(join(projectRoot, "yarn.lock"));
       }
       core.info(`Using default install command: ${installCommand}`);
     }
     // Produce a Dockerfile
     const buildDir = ".airplane-build";
     const entrypointJS = relative(
-      workingDir,
+      projectRoot,
       b.builderConfig.entrypoint
     ).replace(/\.ts$/, ".js");
     contents = `
@@ -106,17 +106,18 @@ export async function getDockerfile(b: Builder): Promise<string> {
       RUN npm install -g typescript@${TYPESCRIPT_VERSION}
       WORKDIR /airplane
       
-      WORKDIR /airplane/${workingDir}
       COPY ${installFiles.join(" ")} ./
       RUN ${installCommand}
       
-      WORKDIR /airplane
-      COPY . .
-      RUN cd ${workingDir} \
-          && rm -rf ${buildDir}/ \
-          && tsc --outDir ${buildDir}/ --rootDir .
+      COPY ${projectRoot} ./
+      RUN [ -f tsconfig.json ] || cat >tsconfig.json <<TSCONFIG
+      {
+        "include": ["*", "**/*"],
+        "exclude": ["node_modules"]
+      }
+      TSCONFIG
+      RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
       
-      WORKDIR /airplane
       ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
     `;
   } else if (b.builder === "python") {
