@@ -15090,6 +15090,9 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
 };
 
 
+
+const NODE_VERSION = "15.8";
+const TYPESCRIPT_VERSION = 4.1;
 function getDockerfile(b) {
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
@@ -15126,20 +15129,82 @@ function getDockerfile(b) {
       ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
     `;
         }
+        else if (b.builder === "node") {
+            // Find package.json to determine project root
+            const packageJSONPath = yield find("package.json", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            if (!packageJSONPath) {
+                throw new Error("Unable to find package.json");
+            }
+            const projectRoot = (0,external_path_.dirname)(packageJSONPath);
+            // Determine installCommand and installFiles
+            let installCommand;
+            const installFiles = [(0,external_path_.join)(projectRoot, "package.json")];
+            if ((0,external_fs_.existsSync)((0,external_path_.join)(projectRoot, "package-lock.json"))) {
+                installCommand = "npm install";
+                installFiles.push((0,external_path_.join)(projectRoot, "package-lock.json"));
+                core.info(`Detected package-lock.json, running: ${installCommand}`);
+            }
+            else {
+                installCommand = "yarn";
+                if ((0,external_fs_.existsSync)((0,external_path_.join)(projectRoot, "yarn.lock"))) {
+                    installFiles.push((0,external_path_.join)(projectRoot, "yarn.lock"));
+                }
+                core.info(`Using default install command: ${installCommand}`);
+            }
+            // Produce a Dockerfile
+            switch (b.builderConfig.language) {
+                case "typescript":
+                    const buildDir = ".airplane-build";
+                    const entrypointJS = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
+                    contents = `
+          FROM node:${NODE_VERSION}-stretch
+    
+          RUN npm install -g typescript@${TYPESCRIPT_VERSION}
+          WORKDIR /airplane
+          
+          COPY ${installFiles.join(" ")} ./
+          RUN ${installCommand}
+          
+          COPY ${projectRoot} ./
+          RUN [ -f tsconfig.json ] || cat >tsconfig.json <<TSCONFIG
+          {
+            "include": ["*", "**/*"],
+            "exclude": ["node_modules"]
+          }
+          TSCONFIG
+          RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
+          
+          ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
+        `;
+                case "javascript":
+                    contents = `
+          FROM node:${NODE_VERSION}-stretch
+    
+          WORKDIR /airplane
+          
+          COPY ${installFiles.join(" ")} ./
+          RUN ${installCommand}
+
+          COPY ${projectRoot} ./
+          
+          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+        `;
+            }
+        }
         else if (b.builder === "python") {
             const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
             if (!requirementsPath) {
-                throw new Error('Unable to find a requirements.txt');
+                throw new Error("Unable to find a requirements.txt");
             }
             contents = `
       FROM python:3.9-buster
 
       WORKDIR /airplane
 
-      ADD ${requirementsPath} ${requirementsPath}
+      COPY ${requirementsPath} ${requirementsPath}
       RUN pip install -r ${requirementsPath}
 
-      ADD . .
+      COPY . .
 
       ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
     `;
