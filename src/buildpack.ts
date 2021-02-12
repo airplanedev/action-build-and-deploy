@@ -96,14 +96,13 @@ export async function getDockerfile(b: Builder): Promise<string> {
       core.info(`Using default install command: ${installCommand}`);
     }
     // Produce a Dockerfile
-    switch (b.builderConfig.language) {
-      case "typescript":
-        const buildDir = ".airplane-build";
-        const entrypointJS = relative(
-          projectRoot,
-          b.builderConfig.entrypoint
-        ).replace(/\.ts$/, ".js");
-        contents = `
+    if (b.builderConfig.language === "typescript") {
+      const buildDir = ".airplane-build";
+      const entrypointJS = relative(
+        projectRoot,
+        b.builderConfig.entrypoint
+      ).replace(/\.ts$/, ".js");
+      contents = `
           FROM node:${NODE_VERSION}-stretch
     
           RUN npm install -g typescript@${TYPESCRIPT_VERSION}
@@ -123,8 +122,8 @@ export async function getDockerfile(b: Builder): Promise<string> {
           
           ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
         `;
-      case "javascript":
-        contents = `
+    } else if (b.builderConfig.language === "javascript") {
+      contents = `
           FROM node:${NODE_VERSION}-stretch
     
           WORKDIR /airplane
@@ -136,6 +135,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
           
           ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
         `;
+    } else {
+      throw new Error(
+        `Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`
+      );
     }
   } else if (b.builder === "python") {
     const requirementsPath = await find(
