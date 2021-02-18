@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import { existsSync, promises as fs } from "fs";
-import { join, dirname, sep, relative } from "path";
+import { join, dirname, relative } from "path";
 
 export type Builder =
   | {
