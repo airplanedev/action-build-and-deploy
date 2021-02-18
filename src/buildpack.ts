@@ -56,7 +56,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     )
 
     contents = `
-      FROM golang:1.15.7-alpine3.13 as builder
+      FROM golang:1.16.0-alpine3.13 as builder
 
       WORKDIR /airplane
 
@@ -69,7 +69,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     `;
   } else if (b.builder === "deno") {
     contents = `
-      FROM hayd/alpine-deno:1.7.1
+      FROM hayd/alpine-deno:1.7.2
 
       WORKDIR /airplane
 
@@ -111,7 +111,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         b.builderConfig.entrypoint
       ).replace(/\.ts$/, ".js");
       contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           RUN npm install -g typescript@${TYPESCRIPT_VERSION}
           WORKDIR /airplane
@@ -127,7 +127,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         `;
     } else if (b.builderConfig.language === "javascript") {
       contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           WORKDIR /airplane
           
@@ -153,7 +153,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     }
 
     contents = `
-      FROM python:3.9-buster
+      FROM python:3.9.1-buster
 
       WORKDIR /airplane
 

@@ -15105,7 +15105,7 @@ function getDockerfile(b) {
             const goSumPath = (0,external_path_.join)(projectRoot, "go.sum");
             const entrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
             contents = `
-      FROM golang:1.15.7-alpine3.13 as builder
+      FROM golang:1.16.0-alpine3.13 as builder
 
       WORKDIR /airplane
 
@@ -15119,7 +15119,7 @@ function getDockerfile(b) {
         }
         else if (b.builder === "deno") {
             contents = `
-      FROM hayd/alpine-deno:1.7.1
+      FROM hayd/alpine-deno:1.7.2
 
       WORKDIR /airplane
 
@@ -15157,7 +15157,7 @@ function getDockerfile(b) {
                 const buildDir = ".airplane-build";
                 const entrypointJS = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
                 contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           RUN npm install -g typescript@${TYPESCRIPT_VERSION}
           WORKDIR /airplane
@@ -15174,7 +15174,7 @@ function getDockerfile(b) {
             }
             else if (b.builderConfig.language === "javascript") {
                 contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           WORKDIR /airplane
           
@@ -15196,7 +15196,7 @@ function getDockerfile(b) {
                 throw new Error("Unable to find a requirements.txt");
             }
             contents = `
-      FROM python:3.9-buster
+      FROM python:3.9.1-buster
 
       WORKDIR /airplane
 
