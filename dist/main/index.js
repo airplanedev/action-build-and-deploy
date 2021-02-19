@@ -15097,28 +15097,29 @@ function getDockerfile(b) {
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
         if (b.builder === "go") {
+            const goModPath = yield find("go.mod", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            if (!goModPath) {
+                throw new Error("Unable to find go.mod");
+            }
+            const projectRoot = (0,external_path_.dirname)(goModPath);
+            const goSumPath = (0,external_path_.join)(projectRoot, "go.sum");
+            const entrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
             contents = `
-      FROM golang:1.15.7-alpine3.13 as builder
+      FROM golang:1.16.0-alpine3.13 as builder
 
       WORKDIR /airplane
 
-      COPY go.* ./
+      COPY ${goModPath} ${goSumPath} .
       RUN go mod download
 
-      ADD . .
+      COPY ${projectRoot} .
 
-      RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags '-w' -o main ${b.builderConfig.entrypoint}
-
-      FROM gcr.io/distroless/static
-
-      COPY --from=builder /airplane/main /bin/main
-
-      ENTRYPOINT ["/bin/main"]
+      ENTRYPOINT ["go", "run", "${entrypoint}"]
     `;
         }
         else if (b.builder === "deno") {
             contents = `
-      FROM hayd/alpine-deno:1.7.1
+      FROM hayd/alpine-deno:1.7.2
 
       WORKDIR /airplane
 
@@ -15156,7 +15157,7 @@ function getDockerfile(b) {
                 const buildDir = ".airplane-build";
                 const entrypointJS = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
                 contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           RUN npm install -g typescript@${TYPESCRIPT_VERSION}
           WORKDIR /airplane
@@ -15173,7 +15174,7 @@ function getDockerfile(b) {
             }
             else if (b.builderConfig.language === "javascript") {
                 contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           WORKDIR /airplane
           
@@ -15195,7 +15196,7 @@ function getDockerfile(b) {
                 throw new Error("Unable to find a requirements.txt");
             }
             contents = `
-      FROM python:3.9-buster
+      FROM python:3.9.1-buster
 
       WORKDIR /airplane
 

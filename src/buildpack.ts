@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import { existsSync, promises as fs } from "fs";
-import { join, dirname, sep, relative } from "path";
+import { join, dirname, relative } from "path";
 
 export type Builder =
   | {
@@ -41,27 +41,35 @@ const TYPESCRIPT_VERSION = 4.1;
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
   if (b.builder === "go") {
+    const goModPath = await find(
+      "go.mod",
+      dirname(b.builderConfig.entrypoint)
+    );
+    if (!goModPath) {
+      throw new Error("Unable to find go.mod");
+    }
+    const projectRoot = dirname(goModPath)
+    const goSumPath = join(projectRoot, "go.sum")
+    const entrypoint = relative(
+      projectRoot,
+      b.builderConfig.entrypoint
+    )
+
     contents = `
-      FROM golang:1.15.7-alpine3.13 as builder
+      FROM golang:1.16.0-alpine3.13 as builder
 
       WORKDIR /airplane
 
-      COPY go.* ./
+      COPY ${goModPath} ${goSumPath} .
       RUN go mod download
 
-      ADD . .
+      COPY ${projectRoot} .
 
-      RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags '-w' -o main ${b.builderConfig.entrypoint}
-
-      FROM gcr.io/distroless/static
-
-      COPY --from=builder /airplane/main /bin/main
-
-      ENTRYPOINT ["/bin/main"]
+      ENTRYPOINT ["go", "run", "${entrypoint}"]
     `;
   } else if (b.builder === "deno") {
     contents = `
-      FROM hayd/alpine-deno:1.7.1
+      FROM hayd/alpine-deno:1.7.2
 
       WORKDIR /airplane
 
@@ -103,7 +111,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         b.builderConfig.entrypoint
       ).replace(/\.ts$/, ".js");
       contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           RUN npm install -g typescript@${TYPESCRIPT_VERSION}
           WORKDIR /airplane
@@ -119,7 +127,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         `;
     } else if (b.builderConfig.language === "javascript") {
       contents = `
-          FROM node:${NODE_VERSION}-stretch
+          FROM node:${NODE_VERSION}-buster
     
           WORKDIR /airplane
           
@@ -145,7 +153,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     }
 
     contents = `
-      FROM python:3.9-buster
+      FROM python:3.9.1-buster
 
       WORKDIR /airplane
 
