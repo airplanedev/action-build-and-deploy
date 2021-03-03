@@ -64,7 +64,7 @@ $ yarn watch
 
 ## Deployment
 
-To deploy a new version of this GitHub Action, create [a new release](https://github.com/airplanedev/action-build-and-deploy/releases/new). Releases are tagged using [semver](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md#versioning). In the release, set the tag version and release title to your new version. Make sure to use a `v` prefix, such as `v0.5.4`. Add a description of the changes with links to previous PRs ([examples](https://github.com/airplanedev/action-build-and-deploy/releases)).
+To deploy a new version of this GitHub Action, bump the version in `package.json`, then create [a new release](https://github.com/airplanedev/action-build-and-deploy/releases/new). Releases are tagged using [semver](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md#versioning). In the release, set the tag version and release title to your new version. Make sure to use a `v` prefix, such as `v0.5.4`. Add a description of the changes with links to previous PRs ([examples](https://github.com/airplanedev/action-build-and-deploy/releases)).
 
 After creating the release, update the latest major version to point to this new tag. Consumers of this Action will reference the major version so that they always get the latest minor updates. If you are releasing a new major version, make sure to update the README example above.
 
