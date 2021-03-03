@@ -31,9 +31,9 @@ async function main() {
 
   // Get an Airplane Registry token:
   const resp = await got
-    .post(`https://${host}/agent/registry/getToken`, {
+    .post(`https://${host}/v0/registry/getToken`, {
       headers: {
-        "X-Token": apiKey,
+        "X-Airplane-API-Key": apiKey,
         "X-Team-ID": teamID,
       },
     })
@@ -234,9 +234,9 @@ async function getTasks(host: string, apiKey: string, teamID: string): Promise<T
 
   // Otherwise, fetch the task list from the API.
   const resp = await got
-    .get(`https://${host}/api/tasks`, {
+    .get(`https://${host}/v0/tasks/list`, {
       headers: {
-        "X-Token": apiKey,
+        "X-Airplane-API-Key": apiKey,
         "X-Team-ID": teamID,
       },
       searchParams: {
