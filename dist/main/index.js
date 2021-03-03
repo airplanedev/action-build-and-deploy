@@ -15285,9 +15285,9 @@ function main() {
         core.debug(`got rawBuildArgs='${rawBuildArgs}' translated into buildArgs=${buildArgs}`);
         const tasks = yield getTasks(host, apiKey, teamID);
         // Get an Airplane Registry token:
-        const resp = yield source_default().post(`https://${host}/agent/registry/getToken`, {
+        const resp = yield source_default().post(`https://${host}/v0/registry/getToken`, {
             headers: {
-                "X-Token": apiKey,
+                "X-Airplane-API-Key": apiKey,
                 "X-Team-ID": teamID,
             },
         })
@@ -15454,9 +15454,9 @@ function getTasks(host, apiKey, teamID) {
             });
         }
         // Otherwise, fetch the task list from the API.
-        const resp = yield source_default().get(`https://${host}/api/tasks`, {
+        const resp = yield source_default().get(`https://${host}/v0/tasks/list`, {
             headers: {
-                "X-Token": apiKey,
+                "X-Airplane-API-Key": apiKey,
                 "X-Team-ID": teamID,
             },
             searchParams: {
