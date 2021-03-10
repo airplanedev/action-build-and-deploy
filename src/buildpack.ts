@@ -20,6 +20,7 @@ export type Builder =
       builderConfig: {
         language: "typescript" | "javascript";
         entrypoint: string;
+        buildCommand: string;
       };
     }
   | {
@@ -97,6 +98,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
       }
       core.info(`Using default install command: ${installCommand}`);
     }
+    // Determine buildCommand
+    const dockerBuildCommand = b.builderConfig.buildCommand
+      ? `RUN ${b.builderConfig.buildCommand}`
+      : "";
     // Produce a Dockerfile
     if (b.builderConfig.language === "typescript") {
       const buildDir = ".airplane-build";
@@ -116,6 +121,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
           COPY ${projectRoot} ./
           RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json
           RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
+          ${dockerBuildCommand}
           
           ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
         `;
@@ -133,6 +139,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
           RUN ${installCommand}
 
           COPY ${projectRoot} ./
+          ${dockerBuildCommand}
           
           ENTRYPOINT ["node", "${relativeEntrypoint}"]
         `;
