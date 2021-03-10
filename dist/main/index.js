@@ -15152,6 +15152,10 @@ function getDockerfile(b) {
                 }
                 core.info(`Using default install command: ${installCommand}`);
             }
+            // Determine buildCommand
+            const dockerBuildCommand = b.builderConfig.buildCommand
+                ? `RUN ${b.builderConfig.buildCommand}`
+                : "";
             // Produce a Dockerfile
             if (b.builderConfig.language === "typescript") {
                 const buildDir = ".airplane-build";
@@ -15168,11 +15172,13 @@ function getDockerfile(b) {
           COPY ${projectRoot} ./
           RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json
           RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
+          ${dockerBuildCommand}
           
           ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
         `;
             }
             else if (b.builderConfig.language === "javascript") {
+                const relativeEntrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
                 contents = `
           FROM node:${NODE_VERSION}-buster
     
@@ -15182,8 +15188,9 @@ function getDockerfile(b) {
           RUN ${installCommand}
 
           COPY ${projectRoot} ./
+          ${dockerBuildCommand}
           
-          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+          ENTRYPOINT ["node", "${relativeEntrypoint}"]
         `;
             }
             else {
