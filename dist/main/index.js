@@ -15173,6 +15173,7 @@ function getDockerfile(b) {
         `;
             }
             else if (b.builderConfig.language === "javascript") {
+                const relativeEntrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
                 contents = `
           FROM node:${NODE_VERSION}-buster
     
@@ -15183,7 +15184,7 @@ function getDockerfile(b) {
 
           COPY ${projectRoot} ./
           
-          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+          ENTRYPOINT ["node", "${relativeEntrypoint}"]
         `;
             }
             else {
