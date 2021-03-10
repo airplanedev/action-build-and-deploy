@@ -41,19 +41,13 @@ const TYPESCRIPT_VERSION = 4.1;
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
   if (b.builder === "go") {
-    const goModPath = await find(
-      "go.mod",
-      dirname(b.builderConfig.entrypoint)
-    );
+    const goModPath = await find("go.mod", dirname(b.builderConfig.entrypoint));
     if (!goModPath) {
       throw new Error("Unable to find go.mod");
     }
-    const projectRoot = dirname(goModPath)
-    const goSumPath = join(projectRoot, "go.sum")
-    const entrypoint = relative(
-      projectRoot,
-      b.builderConfig.entrypoint
-    )
+    const projectRoot = dirname(goModPath);
+    const goSumPath = join(projectRoot, "go.sum");
+    const entrypoint = relative(projectRoot, b.builderConfig.entrypoint);
 
     contents = `
       FROM golang:1.16.0-alpine3.13 as builder
