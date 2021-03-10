@@ -120,6 +120,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
           ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
         `;
     } else if (b.builderConfig.language === "javascript") {
+      const relativeEntrypoint = relative(
+        projectRoot,
+        b.builderConfig.entrypoint
+      );
       contents = `
           FROM node:${NODE_VERSION}-buster
     
@@ -130,7 +134,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
           COPY ${projectRoot} ./
           
-          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+          ENTRYPOINT ["node", "${relativeEntrypoint}"]
         `;
     } else {
       throw new Error(
