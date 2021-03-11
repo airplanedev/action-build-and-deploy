@@ -20,7 +20,6 @@ export type Builder =
       builderConfig: {
         nodeVersion: string;
         language: "typescript" | "javascript";
-        buildCommand: string;
         entrypoint: string;
         buildCommand: string;
       };
@@ -85,6 +84,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
       throw new Error("Unable to find package.json");
     }
     const projectRoot = dirname(packageJSONPath);
+
     // Determine installCommand and installFiles
     let installCommand;
     const installFiles = [join(projectRoot, "package.json")];
@@ -99,56 +99,51 @@ export async function getDockerfile(b: Builder): Promise<string> {
       }
       core.info(`Using default install command: ${installCommand}`);
     }
-    // Determine buildCommand
-    const dockerBuildCommand = b.builderConfig.buildCommand
-      ? `RUN ${b.builderConfig.buildCommand}`
-      : "";
+
     // Produce a Dockerfile
+    let tsInstall = "";
+    let tsConfigure = "";
+    let buildCommand = b.builderConfig.buildCommand;
+    let entrypoint: string;
+
     if (b.builderConfig.language === "typescript") {
       const buildDir = ".airplane-build";
-      const entrypointJS = relative(
-        projectRoot,
-        b.builderConfig.entrypoint
-      ).replace(/\.ts$/, ".js");
-      contents = `
-          FROM node:${b.builderConfig.nodeVersion}-buster
-    
-          RUN npm install -g typescript@${TYPESCRIPT_VERSION}
-          WORKDIR /airplane
-          
-          COPY ${installFiles.join(" ")} ./
-          RUN ${installCommand}
-          
-          COPY ${projectRoot} ./
-          RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json
-          RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
-          ${dockerBuildCommand}
-          
-          ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
-        `;
-    } else if (b.builderConfig.language === "javascript") {
-      const relativeEntrypoint = relative(
-        projectRoot,
-        b.builderConfig.entrypoint
+      tsInstall = `RUN npm install -g typescript@${TYPESCRIPT_VERSION}`;
+      tsConfigure = `RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json`;
+      // Run the typescript build first, followed by buildCommand
+      buildCommand = `rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .${
+        buildCommand === "" ? "" : ` && ${buildCommand}`
+      }`;
+      entrypoint = join(
+        buildDir,
+        relative(projectRoot, b.builderConfig.entrypoint).replace(
+          /\.ts$/,
+          ".js"
+        )
       );
-      contents = `
-          FROM node:${b.builderConfig.nodeVersion}-buster
-    
-          WORKDIR /airplane
-          
-          COPY ${installFiles.join(" ")} ./
-          RUN ${installCommand}
-
-          COPY ${projectRoot} ./
-          ${dockerBuildCommand}
-          
-          ENTRYPOINT ["node", "${relativeEntrypoint}"]
-        `;
+    } else if (b.builderConfig.language === "javascript") {
+      entrypoint = relative(projectRoot, b.builderConfig.entrypoint);
     } else {
       throw new Error(
         `Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`
       );
     }
+
+    contents = `
+      FROM node:${b.builderConfig.nodeVersion}-buster
+      
+      ${tsInstall}
+      WORKDIR /airplane
+      
+      COPY ${installFiles.join(" ")} ./
+      RUN ${installCommand}
+      
+      COPY ${projectRoot} ./
+      ${tsConfigure}
+      ${buildCommand === "" ? "" : `RUN ${buildCommand}`}
+      
+      ENTRYPOINT ["node", "${entrypoint}"]
+    `;
   } else if (b.builder === "python") {
     const requirementsPath = await find(
       "requirements.txt",
