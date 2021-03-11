@@ -18,7 +18,9 @@ export type Builder =
   | {
       builder: "node";
       builderConfig: {
+        nodeVersion: string;
         language: "typescript" | "javascript";
+        buildCommand: string;
         entrypoint: string;
       };
     }
@@ -35,7 +37,6 @@ export type Builder =
       };
     };
 
-const NODE_VERSION = "15.8";
 const TYPESCRIPT_VERSION = 4.1;
 
 export async function getDockerfile(b: Builder): Promise<string> {
@@ -105,7 +106,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         b.builderConfig.entrypoint
       ).replace(/\.ts$/, ".js");
       contents = `
-          FROM node:${NODE_VERSION}-buster
+          FROM node:${b.builderConfig.nodeVersion}-buster
     
           RUN npm install -g typescript@${TYPESCRIPT_VERSION}
           WORKDIR /airplane
@@ -125,7 +126,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
         b.builderConfig.entrypoint
       );
       contents = `
-          FROM node:${NODE_VERSION}-buster
+          FROM node:${b.builderConfig.nodeVersion}-buster
     
           WORKDIR /airplane
           
