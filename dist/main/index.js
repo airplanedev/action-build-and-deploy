@@ -15091,9 +15091,10 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
 
 
 
-const TYPESCRIPT_VERSION = 4.1;
+const NODE_DEFAULT_VERSION = "15.8";
+const TYPESCRIPT_VERSION = "4.1";
 function getDockerfile(b) {
-    var _a;
+    var _a, _b;
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
         if (b.builder === "go") {
@@ -15172,7 +15173,7 @@ function getDockerfile(b) {
                 throw new Error(`Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`);
             }
             contents = `
-      FROM node:${b.builderConfig.nodeVersion}-buster
+      FROM node:${(_b = b.builderConfig.nodeVersion) !== null && _b !== void 0 ? _b : NODE_DEFAULT_VERSION}-buster
       
       ${tsInstall}
       WORKDIR /airplane

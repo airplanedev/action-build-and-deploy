@@ -37,7 +37,8 @@ export type Builder =
       };
     };
 
-const TYPESCRIPT_VERSION = 4.1;
+const NODE_DEFAULT_VERSION = "15.8";
+const TYPESCRIPT_VERSION = "4.1";
 
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
@@ -130,7 +131,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     }
 
     contents = `
-      FROM node:${b.builderConfig.nodeVersion}-buster
+      FROM node:${b.builderConfig.nodeVersion ?? NODE_DEFAULT_VERSION}-buster
       
       ${tsInstall}
       WORKDIR /airplane
