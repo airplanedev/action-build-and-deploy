@@ -15091,7 +15091,6 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
 
 
 
-const NODE_VERSION = "15.8";
 const TYPESCRIPT_VERSION = 4.1;
 function getDockerfile(b) {
     return buildpack_awaiter(this, void 0, void 0, function* () {
@@ -15153,43 +15152,39 @@ function getDockerfile(b) {
                 core.info(`Using default install command: ${installCommand}`);
             }
             // Produce a Dockerfile
+            let tsInstall = "";
+            let tsConfigure = "";
+            let buildCommand = b.builderConfig.buildCommand;
+            let entrypoint;
             if (b.builderConfig.language === "typescript") {
                 const buildDir = ".airplane-build";
-                const entrypointJS = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js");
-                contents = `
-          FROM node:${NODE_VERSION}-buster
-    
-          RUN npm install -g typescript@${TYPESCRIPT_VERSION}
-          WORKDIR /airplane
-          
-          COPY ${installFiles.join(" ")} ./
-          RUN ${installCommand}
-          
-          COPY ${projectRoot} ./
-          RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json
-          RUN rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .
-          
-          ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
-        `;
+                tsInstall = `RUN npm install -g typescript@${TYPESCRIPT_VERSION}`;
+                tsConfigure = `RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json`;
+                // Run the typescript build first, followed by buildCommand
+                buildCommand = `rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .${buildCommand === "" ? "" : ` && ${buildCommand}`}`;
+                entrypoint = (0,external_path_.join)(buildDir, (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js"));
             }
             else if (b.builderConfig.language === "javascript") {
-                const relativeEntrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
-                contents = `
-          FROM node:${NODE_VERSION}-buster
-    
-          WORKDIR /airplane
-          
-          COPY ${installFiles.join(" ")} ./
-          RUN ${installCommand}
-
-          COPY ${projectRoot} ./
-          
-          ENTRYPOINT ["node", "${relativeEntrypoint}"]
-        `;
+                entrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
             }
             else {
                 throw new Error(`Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`);
             }
+            contents = `
+      FROM node:${b.builderConfig.nodeVersion}-buster
+      
+      ${tsInstall}
+      WORKDIR /airplane
+      
+      COPY ${installFiles.join(" ")} ./
+      RUN ${installCommand}
+      
+      COPY ${projectRoot} ./
+      ${tsConfigure}
+      ${buildCommand === "" ? "" : `RUN ${buildCommand}`}
+      
+      ENTRYPOINT ["node", "${entrypoint}"]
+    `;
         }
         else if (b.builder === "python") {
             const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
