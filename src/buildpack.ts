@@ -103,7 +103,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
     // Produce a Dockerfile
     let tsInstall = "";
     let tsConfigure = "";
-    let buildCommand = b.builderConfig.buildCommand;
+    let buildCommand = b.builderConfig.buildCommand ?? "";
     let entrypoint: string;
 
     if (b.builderConfig.language === "typescript") {

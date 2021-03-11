@@ -15093,6 +15093,7 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
 
 const TYPESCRIPT_VERSION = 4.1;
 function getDockerfile(b) {
+    var _a;
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
         if (b.builder === "go") {
@@ -15154,7 +15155,7 @@ function getDockerfile(b) {
             // Produce a Dockerfile
             let tsInstall = "";
             let tsConfigure = "";
-            let buildCommand = b.builderConfig.buildCommand;
+            let buildCommand = (_a = b.builderConfig.buildCommand) !== null && _a !== void 0 ? _a : "";
             let entrypoint;
             if (b.builderConfig.language === "typescript") {
                 const buildDir = ".airplane-build";
