@@ -41,19 +41,13 @@ const TYPESCRIPT_VERSION = 4.1;
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
   if (b.builder === "go") {
-    const goModPath = await find(
-      "go.mod",
-      dirname(b.builderConfig.entrypoint)
-    );
+    const goModPath = await find("go.mod", dirname(b.builderConfig.entrypoint));
     if (!goModPath) {
       throw new Error("Unable to find go.mod");
     }
-    const projectRoot = dirname(goModPath)
-    const goSumPath = join(projectRoot, "go.sum")
-    const entrypoint = relative(
-      projectRoot,
-      b.builderConfig.entrypoint
-    )
+    const projectRoot = dirname(goModPath);
+    const goSumPath = join(projectRoot, "go.sum");
+    const entrypoint = relative(projectRoot, b.builderConfig.entrypoint);
 
     contents = `
       FROM golang:1.16.0-alpine3.13 as builder
@@ -126,6 +120,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
           ENTRYPOINT ["node", "${buildDir}/${entrypointJS}"]
         `;
     } else if (b.builderConfig.language === "javascript") {
+      const relativeEntrypoint = relative(
+        projectRoot,
+        b.builderConfig.entrypoint
+      );
       contents = `
           FROM node:${NODE_VERSION}-buster
     
@@ -136,7 +134,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
           COPY ${projectRoot} ./
           
-          ENTRYPOINT ["node", "${b.builderConfig.entrypoint}"]
+          ENTRYPOINT ["node", "${relativeEntrypoint}"]
         `;
     } else {
       throw new Error(
