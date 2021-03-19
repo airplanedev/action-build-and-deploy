@@ -15155,7 +15155,7 @@ function getDockerfile(b) {
             }
             // Detect NPM_RC or NPM_AUTH in env vars
             const npmrcFile = (0,external_path_.join)(projectRoot, ".npmrc");
-            if (process.env.NPM_AUTH) {
+            if (process.env.NPM_RC) {
                 core.info("Found NPM_RC environment variable - creating .npmrc");
                 yield external_fs_.promises.writeFile(npmrcFile, process.env.NPM_RC);
                 installFiles.push(npmrcFile);

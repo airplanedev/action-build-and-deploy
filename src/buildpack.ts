@@ -103,7 +103,7 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
     // Detect NPM_RC or NPM_AUTH in env vars
     const npmrcFile = join(projectRoot, ".npmrc");
-    if (process.env.NPM_AUTH) {
+    if (process.env.NPM_RC) {
       core.info("Found NPM_RC environment variable - creating .npmrc");
       await fs.writeFile(npmrcFile, process.env.NPM_RC);
       installFiles.push(npmrcFile);
