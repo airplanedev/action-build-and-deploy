@@ -101,6 +101,21 @@ export async function getDockerfile(b: Builder): Promise<string> {
       core.info(`Using default install command: ${installCommand}`);
     }
 
+    // Detect NPM_RC or NPM_AUTH in env vars
+    const npmrcFile = join(projectRoot, ".npmrc");
+    if (process.env.NPM_AUTH) {
+      core.info("Found NPM_RC environment variable - creating .npmrc");
+      await fs.writeFile(npmrcFile, process.env.NPM_RC);
+      installFiles.push(npmrcFile);
+    } else if (process.env.NPM_TOKEN) {
+      core.info("Found NPM_TOKEN environment variable - creating .npmrc");
+      await fs.writeFile(
+        npmrcFile,
+        `//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}`
+      );
+      installFiles.push(npmrcFile);
+    }
+
     // Produce a Dockerfile
     let tsInstall = "";
     let tsConfigure = "";
