@@ -332,8 +332,8 @@ function sanitizeDockerTag(str: string) {
   // start with a period or a dash and may contain a maximum of 128 characters.
   return str
     .substr(0, 128)
-    .replaceAll(/[^a-zA-Z0-9_.-]/g, "-")
-    .replaceAll(/^[.-]/g, "_");
+    .replace(/[^a-zA-Z0-9_.-]/g, "-")
+    .replace(/^[.-]/g, "_");
 }
 
 run();

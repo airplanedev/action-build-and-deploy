@@ -15291,7 +15291,10 @@ function main() {
         const host = core.getInput("host");
         const parallel = core.getInput("parallel") === "true";
         const rawBuildArgs = core.getInput("build-args");
-        const buildArgs = rawBuildArgs.split('\n').map(arg => arg.trim()).filter(arg => arg !== "");
+        const buildArgs = rawBuildArgs
+            .split("\n")
+            .map((arg) => arg.trim())
+            .filter((arg) => arg !== "");
         core.debug(`got rawBuildArgs='${rawBuildArgs}' translated into buildArgs=${buildArgs}`);
         const tasks = yield getTasks(host, apiKey, teamID);
         // Get an Airplane Registry token:
@@ -15328,10 +15331,7 @@ function main() {
             const key = object_hash_default()(b);
             builds[key] = {
                 b,
-                tasks: [
-                    ...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.tasks) || []),
-                    task,
-                ],
+                tasks: [...(((_a = builds[key]) === null || _a === void 0 ? void 0 : _a.tasks) || []), task],
                 imageTags: [
                     ...(((_b = builds[key]) === null || _b === void 0 ? void 0 : _b.imageTags) || []),
                     ...tags.map((tag) => `${resp.repo}/${toImageName(task.taskID)}:${tag}`),
@@ -15372,7 +15372,7 @@ function main() {
                 }
             }
         }
-        console.table(results.map(result => {
+        console.table(results.map((result) => {
             const build = result.status === "fulfilled" ? result.value : result.reason.build;
             if (!build) {
                 console.error(`build is undefined? for result: ${JSON.stringify(result)}`);
@@ -15382,7 +15382,9 @@ function main() {
                 builder: build.b.builder,
                 builderConfig: JSON.stringify(build.b.builderConfig),
                 error: result.status === "fulfilled" ? "" : result.reason.err,
-                tasks: build.tasks.map(task => `https://app.airplane.dev/tasks/${task.taskID}`).join(", "),
+                tasks: build.tasks
+                    .map((task) => `https://app.airplane.dev/tasks/${task.taskID}`)
+                    .join(", "),
                 tags: build.imageTags.join(", "),
             };
         }));
@@ -15395,7 +15397,7 @@ function main() {
         if (numFailed > 0) {
             throw new Error(`${numFailed}/${Object.keys(builds).length} builds failed. Review the table and logs above for more information.`);
         }
-        console.log('Done. Ready to launch from https://app.airplane.dev 🛫');
+        console.log("Done. Ready to launch from https://app.airplane.dev 🛫");
         console.log(`These tasks can be run with your latest code using any of the following image tags: [${tags}]`);
     });
 }
@@ -15404,7 +15406,10 @@ function getTags() {
     return main_awaiter(this, void 0, void 0, function* () {
         // Fetch the shortest unique SHA (of length at least 7):
         const { stdout: shortSHA } = yield exec_exec([
-            "git", "rev-parse", "--short=7", github.context.sha
+            "git",
+            "rev-parse",
+            "--short=7",
+            github.context.sha,
         ]);
         const branch = github.context.ref.replace(/^refs\/heads\//, "");
         const sanitizedBranch = sanitizeDockerTag(branch);
@@ -15470,9 +15475,10 @@ function getTasks(host, apiKey, teamID) {
                 "X-Team-ID": teamID,
             },
             searchParams: {
-                repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`
-            }
-        }).json();
+                repo: `github.com/${github.context.repo.owner}/${github.context.repo.repo}`,
+            },
+        })
+            .json();
         return resp.tasks;
     });
 }
@@ -15494,7 +15500,7 @@ function buildTask(b, imageTags, buildArgs) {
             "buildx",
             "build",
             ...imageTags.map((tag) => ["--tag", tag]).flat(1),
-            ...buildArgs.map(arg => ["--build-arg", arg]).flat(1),
+            ...buildArgs.map((arg) => ["--build-arg", arg]).flat(1),
             "--file",
             dockerfilePath,
             "--cache-from",
@@ -15516,8 +15522,8 @@ function sanitizeDockerTag(str) {
     // start with a period or a dash and may contain a maximum of 128 characters.
     return str
         .substr(0, 128)
-        .replaceAll(/[^a-zA-Z0-9_.-]/g, "-")
-        .replaceAll(/^[.-]/g, "_");
+        .replace(/[^a-zA-Z0-9_.-]/g, "-")
+        .replace(/^[.-]/g, "_");
 }
 run();
 
