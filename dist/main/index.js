@@ -15091,7 +15091,12 @@ var buildpack_awaiter = (undefined && undefined.__awaiter) || function (thisArg,
 
 
 
-const NODE_DEFAULT_VERSION = "15.8";
+const NODE_VERSIONS = {
+    "15": "15.8",
+    "14": "14.16",
+    "12": "12.21",
+};
+const NODE_DEFAULT_VERSION = "15";
 const TYPESCRIPT_VERSION = "4.1";
 function getDockerfile(b) {
     var _a, _b;
@@ -15184,8 +15189,16 @@ function getDockerfile(b) {
             else {
                 throw new Error(`Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`);
             }
+            const nodeVersion = b.builderConfig.nodeVersion == null
+                ? // If it's not set, use a default version:
+                    NODE_VERSIONS[NODE_DEFAULT_VERSION]
+                : // Typically we expect to look up the nodeVersion (e.g. "15") to resolve it to the pinned minor version (e.g. "15.8"):
+                 (_b = NODE_VERSIONS[b.builderConfig.nodeVersion]) !== null && _b !== void 0 ? _b : 
+                // If it's not in our list of node versions, this might be an explicit patch version from a previous config.
+                // Just fall back to the exact specified version:
+                b.builderConfig.nodeVersion;
             contents = `
-      FROM node:${(_b = b.builderConfig.nodeVersion) !== null && _b !== void 0 ? _b : NODE_DEFAULT_VERSION}-buster
+      FROM node:${nodeVersion}-buster
       
       ${tsInstall}
       WORKDIR /airplane

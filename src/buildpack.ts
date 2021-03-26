@@ -37,7 +37,12 @@ export type Builder =
       };
     };
 
-const NODE_DEFAULT_VERSION = "15.8";
+const NODE_VERSIONS: Record<string, string> = {
+  "15": "15.8",
+  "14": "14.16",
+  "12": "12.21",
+};
+const NODE_DEFAULT_VERSION = "15";
 const TYPESCRIPT_VERSION = "4.1";
 
 export async function getDockerfile(b: Builder): Promise<string> {
@@ -145,8 +150,17 @@ export async function getDockerfile(b: Builder): Promise<string> {
       );
     }
 
+    const nodeVersion =
+      b.builderConfig.nodeVersion == null
+        ? // If it's not set, use a default version:
+          NODE_VERSIONS[NODE_DEFAULT_VERSION]
+        : // Typically we expect to look up the nodeVersion (e.g. "15") to resolve it to the pinned minor version (e.g. "15.8"):
+          NODE_VERSIONS[b.builderConfig.nodeVersion] ??
+          // If it's not in our list of node versions, this might be an explicit patch version from a previous config.
+          // Just fall back to the exact specified version:
+          b.builderConfig.nodeVersion;
     contents = `
-      FROM node:${b.builderConfig.nodeVersion ?? NODE_DEFAULT_VERSION}-buster
+      FROM node:${nodeVersion}-buster
       
       ${tsInstall}
       WORKDIR /airplane
