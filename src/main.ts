@@ -322,7 +322,7 @@ async function buildTask(
   return;
 }
 
-function toImageName(taskID: string) {
+function toImageName(taskID: string): string {
   let s = `task-${taskID.toLowerCase()}`
   const c = s[s.length-1]
   if (c >= '0' && c <= '9') {
