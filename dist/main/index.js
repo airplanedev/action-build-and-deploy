@@ -15527,7 +15527,12 @@ function buildTask(b, imageTags, buildArgs) {
     });
 }
 function toImageName(taskID) {
-    return `task-${taskID.toLowerCase()}`;
+    let s = `task-${taskID.toLowerCase()}`;
+    const c = s[s.length - 1];
+    if (c >= '0' && c <= '9') {
+        s = s.substr(0, s.length - 1) + 'a';
+    }
+    return s;
 }
 function sanitizeDockerTag(str) {
     // A tag name must be valid ASCII and may contain lowercase and uppercase
