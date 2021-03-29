@@ -69,7 +69,7 @@ To deploy a new version of this GitHub Action, bump the version in `package.json
 After creating the release, update the latest major version to point to this new tag. Consumers of this Action will reference the major version so that they always get the latest minor updates. If you are releasing a new major version, make sure to update the README example above.
 
 ```sh
-git fetch --tags
+git fetch --tags --force
 # Checkout the tag you just released.
 git checkout v0.5.4
 # Alias it with the major version.
