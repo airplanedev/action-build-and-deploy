@@ -93,7 +93,7 @@ async function main() {
   }
 
   // Build and publish each image:
-  console.log(`Uploading ${tasks.length} task(s) to Airplane...`);
+  console.log(`::group::Deploying ${tasks.length} task(s) to Airplane...`);
   let results: PromiseSettledResult<typeof builds[0]>[] = [];
   if (parallel) {
     results = await Promise.allSettled(
@@ -125,28 +125,36 @@ async function main() {
       }
     }
   }
+  console.log("::endgroup::");
 
-  console.table(
-    results.map((result) => {
-      const build: typeof builds[0] =
-        result.status === "fulfilled" ? result.value : result.reason.build;
-      if (!build) {
-        console.error(
-          `build is undefined? for result: ${JSON.stringify(result)}`
+  console.log("");
+  console.log("Build results:");
+  results.forEach((result) => {
+    const build: typeof builds[0] =
+      result.status === "fulfilled" ? result.value : result.reason.build;
+    if (!build) {
+      console.error(`build is undefined for result: ${JSON.stringify(result)}`);
+    }
+    // Group by task, rather than build, to match what a user would expect
+    build.tasks.forEach((task) => {
+      console.log("");
+      const taskURL = `https://app.airplane.dev/tasks/${task.taskID}?__version=${tags[0]}`;
+      const statusSymbol = result.status === "fulfilled" ? "✅" : "❌";
+      console.log(`::group::${statusSymbol} Task ${task.taskID} (${taskURL})`);
+      console.log("status:", statusSymbol);
+      console.log("builder:", build.b.builder);
+      console.log("builderConfig:", JSON.stringify(build.b.builderConfig)),
+        console.log(
+          "error:",
+          result.status === "fulfilled" ? "N/A" : result.reason.err
         );
-      }
-      return {
-        status: result.status === "fulfilled" ? "✅" : "❌",
-        builder: build.b.builder,
-        builderConfig: JSON.stringify(build.b.builderConfig),
-        error: result.status === "fulfilled" ? "" : result.reason.err,
-        tasks: build.tasks
-          .map((task) => `https://app.airplane.dev/tasks/${task.taskID}`)
-          .join(", "),
-        tags: build.imageTags.join(", "),
-      };
-    })
-  );
+      console.log("tags:");
+      build.imageTags.forEach((imageTag) => {
+        console.log("  ", imageTag);
+      });
+      console.log("::endgroup::");
+    });
+  });
 
   let numFailed = 0;
   for (let result of results) {
