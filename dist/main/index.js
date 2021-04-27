@@ -15102,14 +15102,14 @@ function getDockerfile(b) {
     var _a, _b;
     return buildpack_awaiter(this, void 0, void 0, function* () {
         let contents = "";
-        if (b.builder === "go") {
-            const goModPath = yield find("go.mod", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+        if (b.kind === "go") {
+            const goModPath = yield find("go.mod", (0,external_path_.dirname)(b.kindOptions.entrypoint));
             if (!goModPath) {
                 throw new Error("Unable to find go.mod");
             }
             const projectRoot = (0,external_path_.dirname)(goModPath);
             const goSumPath = (0,external_path_.join)(projectRoot, "go.sum");
-            const entrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
+            const entrypoint = (0,external_path_.relative)(projectRoot, b.kindOptions.entrypoint);
             contents = `
       FROM golang:1.16.0-alpine3.13 as builder
 
@@ -15123,22 +15123,22 @@ function getDockerfile(b) {
       ENTRYPOINT ["go", "run", "${entrypoint}"]
     `;
         }
-        else if (b.builder === "deno") {
+        else if (b.kind === "deno") {
             contents = `
       FROM hayd/alpine-deno:1.7.2
 
       WORKDIR /airplane
 
       ADD . .
-      RUN deno cache ${b.builderConfig.entrypoint}
+      RUN deno cache ${b.kindOptions.entrypoint}
 
       USER deno
-      ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
+      ENTRYPOINT ["deno", "run", "-A", "${b.kindOptions.entrypoint}"]
     `;
         }
-        else if (b.builder === "node") {
+        else if (b.kind === "node") {
             // Find package.json to determine project root
-            const packageJSONPath = yield find("package.json", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+            const packageJSONPath = yield find("package.json", (0,external_path_.dirname)(b.kindOptions.entrypoint));
             if (!packageJSONPath) {
                 throw new Error("Unable to find package.json");
             }
@@ -15173,30 +15173,30 @@ function getDockerfile(b) {
             // Produce a Dockerfile
             let tsInstall = "";
             let tsConfigure = "";
-            let buildCommand = (_a = b.builderConfig.buildCommand) !== null && _a !== void 0 ? _a : "";
+            let buildCommand = (_a = b.kindOptions.buildCommand) !== null && _a !== void 0 ? _a : "";
             let entrypoint;
-            if (b.builderConfig.language === "typescript") {
+            if (b.kindOptions.language === "typescript") {
                 const buildDir = ".airplane-build";
                 tsInstall = `RUN npm install -g typescript@${TYPESCRIPT_VERSION}`;
                 tsConfigure = `RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json`;
                 // Run the typescript build first, followed by buildCommand
                 buildCommand = `rm -rf ${buildDir}/ && tsc --outDir ${buildDir}/ --rootDir .${buildCommand === "" ? "" : ` && ${buildCommand}`}`;
-                entrypoint = (0,external_path_.join)(buildDir, (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint).replace(/\.ts$/, ".js"));
+                entrypoint = (0,external_path_.join)(buildDir, (0,external_path_.relative)(projectRoot, b.kindOptions.entrypoint).replace(/\.ts$/, ".js"));
             }
-            else if (b.builderConfig.language === "javascript") {
-                entrypoint = (0,external_path_.relative)(projectRoot, b.builderConfig.entrypoint);
+            else if (b.kindOptions.language === "javascript") {
+                entrypoint = (0,external_path_.relative)(projectRoot, b.kindOptions.entrypoint);
             }
             else {
-                throw new Error(`Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`);
+                throw new Error(`Unexpected node language: ${JSON.stringify(b.kindOptions.language)}`);
             }
-            const nodeVersion = b.builderConfig.nodeVersion == null
+            const nodeVersion = b.kindOptions.nodeVersion == null
                 ? // If it's not set, use a default version:
                     NODE_VERSIONS[NODE_DEFAULT_VERSION]
                 : // Typically we expect to look up the nodeVersion (e.g. "15") to resolve it to the pinned minor version (e.g. "15.8"):
-                 (_b = NODE_VERSIONS[b.builderConfig.nodeVersion]) !== null && _b !== void 0 ? _b : 
+                 (_b = NODE_VERSIONS[b.kindOptions.nodeVersion]) !== null && _b !== void 0 ? _b : 
                 // If it's not in our list of node versions, this might be an explicit patch version from a previous config.
                 // Just fall back to the exact specified version:
-                b.builderConfig.nodeVersion;
+                b.kindOptions.nodeVersion;
             contents = `
       FROM node:${nodeVersion}-buster
       
@@ -15213,8 +15213,8 @@ function getDockerfile(b) {
       ENTRYPOINT ["node", "${entrypoint}"]
     `;
         }
-        else if (b.builder === "python") {
-            const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.builderConfig.entrypoint));
+        else if (b.kind === "python") {
+            const requirementsPath = yield find("requirements.txt", (0,external_path_.dirname)(b.kindOptions.entrypoint));
             if (!requirementsPath) {
                 throw new Error("Unable to find a requirements.txt");
             }
@@ -15228,11 +15228,11 @@ function getDockerfile(b) {
 
       COPY . .
 
-      ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
+      ENTRYPOINT ["python", "${b.kindOptions.entrypoint}"]
     `;
         }
-        else if (b.builder === "docker") {
-            return yield external_fs_.promises.readFile(b.builderConfig.dockerfile, {
+        else if (b.kind === "docker") {
+            return yield external_fs_.promises.readFile(b.kindOptions.dockerfile, {
                 encoding: "utf-8",
             });
         }
@@ -15338,8 +15338,8 @@ function main() {
         const builds = {};
         for (const task of tasks) {
             const b = {
-                builder: task.builder,
-                builderConfig: task.builderConfig,
+                kind: task.kind,
+                kindOptions: task.kindOptions,
             };
             const key = object_hash_default()(b);
             builds[key] = {
@@ -15400,8 +15400,8 @@ function main() {
                 const statusSymbol = result.status === "fulfilled" ? "✅" : "❌";
                 console.log(`::group::${statusSymbol} Task ${task.taskID} (${taskURL})`);
                 console.log("status:", statusSymbol);
-                console.log("builder:", build.b.builder);
-                console.log("builderConfig:", JSON.stringify(build.b.builderConfig)),
+                console.log("builder:", build.b.kind);
+                console.log("builderConfig:", JSON.stringify(build.b.kindOptions)),
                     console.log("error:", result.status === "fulfilled" ? "N/A" : result.reason.err);
                 console.log("tags:");
                 build.imageTags.forEach((imageTag) => {
@@ -15461,8 +15461,8 @@ function getTasks(host, apiKey, teamID) {
                 if (t.buildPack.environment === "go") {
                     return {
                         taskID: t.taskID,
-                        builder: t.buildPack.environment,
-                        builderConfig: {
+                        kind: t.buildPack.environment,
+                        kindOptions: {
                             entrypoint: t.buildPack.entrypoint,
                         },
                     };
@@ -15470,8 +15470,8 @@ function getTasks(host, apiKey, teamID) {
                 else if (t.buildPack.environment === "deno") {
                     return {
                         taskID: t.taskID,
-                        builder: t.buildPack.environment,
-                        builderConfig: {
+                        kind: t.buildPack.environment,
+                        kindOptions: {
                             entrypoint: t.buildPack.entrypoint,
                         },
                     };
@@ -15479,8 +15479,8 @@ function getTasks(host, apiKey, teamID) {
                 else if (t.buildPack.environment === "docker") {
                     return {
                         taskID: t.taskID,
-                        builder: t.buildPack.environment,
-                        builderConfig: {
+                        kind: t.buildPack.environment,
+                        kindOptions: {
                             dockerfile: t.buildPack.dockerfile,
                         },
                     };

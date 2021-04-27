@@ -4,20 +4,20 @@ import { join, dirname, relative } from "path";
 
 export type Builder =
   | {
-      builder: "go";
-      builderConfig: {
+      kind: "go";
+      kindOptions: {
         entrypoint: string;
       };
     }
   | {
-      builder: "deno";
-      builderConfig: {
+      kind: "deno";
+      kindOptions: {
         entrypoint: string;
       };
     }
   | {
-      builder: "node";
-      builderConfig: {
+      kind: "node";
+      kindOptions: {
         nodeVersion: string;
         language: "typescript" | "javascript";
         entrypoint: string;
@@ -25,14 +25,14 @@ export type Builder =
       };
     }
   | {
-      builder: "python";
-      builderConfig: {
+      kind: "python";
+      kindOptions: {
         entrypoint: string;
       };
     }
   | {
-      builder: "docker";
-      builderConfig: {
+      kind: "docker";
+      kindOptions: {
         dockerfile: string;
       };
     };
@@ -47,14 +47,14 @@ const TYPESCRIPT_VERSION = "4.1";
 
 export async function getDockerfile(b: Builder): Promise<string> {
   let contents = "";
-  if (b.builder === "go") {
-    const goModPath = await find("go.mod", dirname(b.builderConfig.entrypoint));
+  if (b.kind === "go") {
+    const goModPath = await find("go.mod", dirname(b.kindOptions.entrypoint));
     if (!goModPath) {
       throw new Error("Unable to find go.mod");
     }
     const projectRoot = dirname(goModPath);
     const goSumPath = join(projectRoot, "go.sum");
-    const entrypoint = relative(projectRoot, b.builderConfig.entrypoint);
+    const entrypoint = relative(projectRoot, b.kindOptions.entrypoint);
 
     contents = `
       FROM golang:1.16.0-alpine3.13 as builder
@@ -68,23 +68,23 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
       ENTRYPOINT ["go", "run", "${entrypoint}"]
     `;
-  } else if (b.builder === "deno") {
+  } else if (b.kind === "deno") {
     contents = `
       FROM hayd/alpine-deno:1.7.2
 
       WORKDIR /airplane
 
       ADD . .
-      RUN deno cache ${b.builderConfig.entrypoint}
+      RUN deno cache ${b.kindOptions.entrypoint}
 
       USER deno
-      ENTRYPOINT ["deno", "run", "-A", "${b.builderConfig.entrypoint}"]
+      ENTRYPOINT ["deno", "run", "-A", "${b.kindOptions.entrypoint}"]
     `;
-  } else if (b.builder === "node") {
+  } else if (b.kind === "node") {
     // Find package.json to determine project root
     const packageJSONPath = await find(
       "package.json",
-      dirname(b.builderConfig.entrypoint)
+      dirname(b.kindOptions.entrypoint)
     );
     if (!packageJSONPath) {
       throw new Error("Unable to find package.json");
@@ -124,10 +124,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
     // Produce a Dockerfile
     let tsInstall = "";
     let tsConfigure = "";
-    let buildCommand = b.builderConfig.buildCommand ?? "";
+    let buildCommand = b.kindOptions.buildCommand ?? "";
     let entrypoint: string;
 
-    if (b.builderConfig.language === "typescript") {
+    if (b.kindOptions.language === "typescript") {
       const buildDir = ".airplane-build";
       tsInstall = `RUN npm install -g typescript@${TYPESCRIPT_VERSION}`;
       tsConfigure = `RUN [ -f tsconfig.json ] || echo '{"include": ["*", "**/*"], "exclude": ["node_modules"]}' >tsconfig.json`;
@@ -137,28 +137,28 @@ export async function getDockerfile(b: Builder): Promise<string> {
       }`;
       entrypoint = join(
         buildDir,
-        relative(projectRoot, b.builderConfig.entrypoint).replace(
+        relative(projectRoot, b.kindOptions.entrypoint).replace(
           /\.ts$/,
           ".js"
         )
       );
-    } else if (b.builderConfig.language === "javascript") {
-      entrypoint = relative(projectRoot, b.builderConfig.entrypoint);
+    } else if (b.kindOptions.language === "javascript") {
+      entrypoint = relative(projectRoot, b.kindOptions.entrypoint);
     } else {
       throw new Error(
-        `Unexpected node language: ${JSON.stringify(b.builderConfig.language)}`
+        `Unexpected node language: ${JSON.stringify(b.kindOptions.language)}`
       );
     }
 
     const nodeVersion =
-      b.builderConfig.nodeVersion == null
+      b.kindOptions.nodeVersion == null
         ? // If it's not set, use a default version:
           NODE_VERSIONS[NODE_DEFAULT_VERSION]
         : // Typically we expect to look up the nodeVersion (e.g. "15") to resolve it to the pinned minor version (e.g. "15.8"):
-          NODE_VERSIONS[b.builderConfig.nodeVersion] ??
+          NODE_VERSIONS[b.kindOptions.nodeVersion] ??
           // If it's not in our list of node versions, this might be an explicit patch version from a previous config.
           // Just fall back to the exact specified version:
-          b.builderConfig.nodeVersion;
+          b.kindOptions.nodeVersion;
     contents = `
       FROM node:${nodeVersion}-buster
       
@@ -174,10 +174,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
       
       ENTRYPOINT ["node", "${entrypoint}"]
     `;
-  } else if (b.builder === "python") {
+  } else if (b.kind === "python") {
     const requirementsPath = await find(
       "requirements.txt",
-      dirname(b.builderConfig.entrypoint)
+      dirname(b.kindOptions.entrypoint)
     );
     if (!requirementsPath) {
       throw new Error("Unable to find a requirements.txt");
@@ -193,10 +193,10 @@ export async function getDockerfile(b: Builder): Promise<string> {
 
       COPY . .
 
-      ENTRYPOINT ["python", "${b.builderConfig.entrypoint}"]
+      ENTRYPOINT ["python", "${b.kindOptions.entrypoint}"]
     `;
-  } else if (b.builder === "docker") {
-    return await fs.readFile(b.builderConfig.dockerfile, {
+  } else if (b.kind === "docker") {
+    return await fs.readFile(b.kindOptions.dockerfile, {
       encoding: "utf-8",
     });
   }

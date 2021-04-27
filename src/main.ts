@@ -78,8 +78,8 @@ async function main() {
   > = {};
   for (const task of tasks) {
     const b = {
-      builder: task.builder,
-      builderConfig: task.builderConfig,
+      kind: task.kind,
+      kindOptions: task.kindOptions,
     } as Builder;
     const key = hash(b);
     builds[key] = {
@@ -142,8 +142,8 @@ async function main() {
       const statusSymbol = result.status === "fulfilled" ? "✅" : "❌";
       console.log(`::group::${statusSymbol} Task ${task.taskID} (${taskURL})`);
       console.log("status:", statusSymbol);
-      console.log("builder:", build.b.builder);
-      console.log("builderConfig:", JSON.stringify(build.b.builderConfig)),
+      console.log("builder:", build.b.kind);
+      console.log("builderConfig:", JSON.stringify(build.b.kindOptions)),
         console.log(
           "error:",
           result.status === "fulfilled" ? "N/A" : result.reason.err
@@ -244,24 +244,24 @@ async function getTasks(
         if (t.buildPack.environment === "go") {
           return {
             taskID: t.taskID,
-            builder: t.buildPack.environment,
-            builderConfig: {
+            kind: t.buildPack.environment,
+            kindOptions: {
               entrypoint: t.buildPack.entrypoint,
             },
           };
         } else if (t.buildPack.environment === "deno") {
           return {
             taskID: t.taskID,
-            builder: t.buildPack.environment,
-            builderConfig: {
+            kind: t.buildPack.environment,
+            kindOptions: {
               entrypoint: t.buildPack.entrypoint,
             },
           };
         } else if (t.buildPack.environment === "docker") {
           return {
             taskID: t.taskID,
-            builder: t.buildPack.environment,
-            builderConfig: {
+            kind: t.buildPack.environment,
+            kindOptions: {
               dockerfile: t.buildPack.dockerfile,
             },
           };
