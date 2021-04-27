@@ -1,6 +1,6 @@
 {
   "name": "airplane-github-action",
-  "version": "0.1.21",
+  "version": "0.1.23",
   "private": true,
   "description": "Builds and uploads Task code to airplane.dev",
   "main": "dist/main/index.js",
